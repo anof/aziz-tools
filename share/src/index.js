@@ -37,9 +37,32 @@ export default {
       return env.ROOMS.get(env.ROOMS.idFromName(room ? "r:" + room : "n:" + network)).fetch(request);
     }
 
+    // Tiny diagnostic: lets the page show which "network" it landed in, so two
+    // devices that cannot see each other can compare IDs. Hashed, not raw.
+    if (url.pathname === "/net") {
+      const room = (url.searchParams.get("r") || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 8);
+      const body = room
+        ? { room: room, net: "" }
+        : { room: "", net: await networkLabel(request.headers.get("CF-Connecting-IP") || "local") };
+      return new Response(JSON.stringify(body), {
+        headers: { "content-type": "application/json", "cache-control": "no-store" },
+      });
+    }
+
     return env.ASSETS.fetch(request);
   },
 };
+
+async function networkLabel(ip) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("aziz.tools/net/" + ip));
+  const bytes = new Uint8Array(digest).slice(0, 3);
+  let out = "";
+  for (const b of bytes) out += b.toString(16).padStart(2, "0");
+  return out;
+}
 
 function isUpgrade(request) {
   return (request.headers.get("Upgrade") || "").toLowerCase() === "websocket";

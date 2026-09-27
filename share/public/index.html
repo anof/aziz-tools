@@ -83,7 +83,7 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
   <div id="transfers" class="transfers"><span class="waiting">Nothing yet. Tap a device to send files.</span></div>
 
   <p id="note" class="note"></p>
-  <p class="foot"><a href="#" id="room">Not seeing each other?</a> &middot; <a href="https://aziz.tools">aziz.tools</a></p>
+  <p class="foot"><span id="netlabel"></span><a href="#" id="room">Not seeing each other?</a> &middot; <a href="https://aziz.tools">aziz.tools</a></p>
 
 </div>
 <input id="file" type="file" multiple style="position:absolute;left:-9999px;top:0;width:1px;height:1px">
@@ -99,7 +99,7 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
   function $(id) { return document.getElementById(id); }
 
   var peersEl = $("peers"), transfersEl = $("transfers"), nameEl = $("name"),
-      fileEl = $("file"), noteEl = $("note"), roomEl = $("room");
+      fileEl = $("file"), noteEl = $("note"), roomEl = $("room"), netLabelEl = $("netlabel");
 
   var RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
   var ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -109,6 +109,7 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
   var HIGH = 4194304;       /* pause while this much is still buffered */
 
   var ws = null, peers = {}, conns = {}, pendingPeer = null, tries = 0, waiting = true;
+  var netId = "", peerCount = 0, hintTimer = null, hintShown = false;
 
   function note(text, bad) {
     noteEl.textContent = text || "";
@@ -190,6 +191,39 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
     send({ t: "name", name: nameEl.value });
   }
 
+  // After a few seconds with nobody in the room, say why that can happen.
+  // Two devices only share a room when Cloudflare sees the same public IP.
+  function armHint() {
+    if (hintTimer) return;
+    hintTimer = setTimeout(function () {
+      hintTimer = null;
+      if (peerCount > 0) return;
+      hintShown = true;
+      note(netId
+        ? "No devices yet. This device's network ID is " + netId +
+          ". If the other device shows a different ID (hotspot, VPN, iCloud Private Relay), tap \"Not seeing each other?\" and enter the same code on both."
+        : "No devices yet. If your other device does not appear, tap \"Not seeing each other?\" and enter the same code on both.");
+    }, 10000);
+  }
+
+  function loadNet() {
+    var room = (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
+    if (room) netLabelEl.textContent = "room " + room.toUpperCase() + " \u00b7 ";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/net" + (room ? "?r=" + room.toUpperCase() : ""), true);
+    xhr.onload = function () {
+      try {
+        var d = JSON.parse(xhr.responseText);
+        if (d.room) netLabelEl.textContent = "room " + d.room + " \u00b7 ";
+        else if (d.net) {
+          netId = d.net;
+          netLabelEl.textContent = "network " + d.net + " \u00b7 ";
+        }
+      } catch (e) {}
+    };
+    try { xhr.send(); } catch (e) {}
+  }
+
   function connect() {
     var room = (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
     var proto = location.protocol === "https:" ? "wss://" : "ws://";
@@ -198,6 +232,8 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
       tries = 0;
       note("");
       sendName();
+      armHint();
+      loadNet();
     };
     ws.onmessage = function (ev) {
       var m;
@@ -215,6 +251,7 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
   function handle(m) {
     if (m.t === "welcome") {
       peers = {};
+      hintShown = false;
       var list = m.peers || [];
       for (var i = 0; i < list.length; i++) peers[list[i].id] = list[i];
       renderPeers();
@@ -237,6 +274,11 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
   function renderPeers() {
     var ids = [], k;
     for (k in peers) if (peers.hasOwnProperty(k)) ids.push(k);
+    peerCount = ids.length;
+    if (peerCount > 0) {
+      if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+      if (hintShown) { hintShown = false; note(""); }
+    }
     peersEl.innerHTML = "";
     if (!ids.length) {
       var w = document.createElement("span");
