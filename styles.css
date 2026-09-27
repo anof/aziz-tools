@@ -1,0 +1,298 @@
+/* aziz.tools - pure HTML/CSS landing page */
+
+:root {
+  color-scheme: dark;
+  --bg: #08090d;
+  --text: #f4f5f8;
+  --text-dim: #9aa0ad;
+  --text-faint: #6b7280;
+
+  --tile-bg: rgba(255, 255, 255, 0.045);
+  --tile-bg-hover: rgba(255, 255, 255, 0.085);
+  --tile-border: rgba(255, 255, 255, 0.1);
+  --tile-border-hover: rgba(255, 255, 255, 0.28);
+
+  --accent: #6ee7ff;
+  --accent-two: #a78bfa;
+  --accent-three: #34d399;
+
+  --radius: 26px;
+  --shadow: 0 22px 60px -30px rgba(0, 0, 0, 0.95);
+  --ring: 2px solid rgba(110, 231, 255, 0.9);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f4f5f8;
+    --text: #10121a;
+    --text-dim: #4d5566;
+    --text-faint: #7a8296;
+
+    --tile-bg: rgba(255, 255, 255, 0.85);
+    --tile-bg-hover: #ffffff;
+    --tile-border: rgba(15, 20, 35, 0.1);
+    --tile-border-hover: rgba(15, 20, 35, 0.3);
+
+    --shadow: 0 24px 50px -32px rgba(15, 20, 35, 0.45);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Ambient background light */
+.glow {
+  position: fixed;
+  z-index: 0;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.glow--one {
+  top: -28vmax;
+  left: -18vmax;
+  background: radial-gradient(circle, rgba(110, 231, 255, 0.55), transparent 65%);
+}
+
+.glow--two {
+  right: -22vmax;
+  bottom: -30vmax;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.5), transparent 65%);
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.75rem, 5vw, 3rem);
+  width: 100%;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: clamp(1.75rem, 6vw, 4.5rem) clamp(1.15rem, 5vw, 2.5rem)
+    clamp(1.5rem, 4vw, 2.5rem);
+}
+
+/* Header */
+.masthead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: clamp(1.9rem, 7vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.wordmark__dot {
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: linear-gradient(140deg, var(--accent), var(--accent-two));
+  box-shadow: 0 0 22px rgba(110, 231, 255, 0.65);
+}
+
+.wordmark__tld {
+  background: linear-gradient(100deg, var(--accent), var(--accent-two));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tagline {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--text-dim);
+  font-size: clamp(0.95rem, 3.4vw, 1.1rem);
+  line-height: 1.5;
+}
+
+/* Square tile grid */
+.tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.85rem, 3vw, 1.35rem);
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  aspect-ratio: 1 / 1;
+  padding: clamp(0.95rem, 3.5vw, 1.4rem);
+  border: 1px solid var(--tile-border);
+  border-radius: var(--radius);
+  background: var(--tile-bg);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: inherit;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform 0.25s ease, border-color 0.25s ease,
+    background-color 0.25s ease, box-shadow 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tile__badge {
+  display: grid;
+  place-items: center;
+  width: clamp(2.6rem, 11vw, 3.35rem);
+  height: clamp(2.6rem, 11vw, 3.35rem);
+  border-radius: 32%;
+  background: linear-gradient(140deg, rgba(110, 231, 255, 0.22), rgba(167, 139, 250, 0.22));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text);
+}
+
+.tile__badge svg {
+  width: 52%;
+  height: 52%;
+}
+
+.tile__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tile__name {
+  font-size: clamp(1.05rem, 4vw, 1.3rem);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.tile__host {
+  color: var(--text-faint);
+  font-size: clamp(0.72rem, 2.9vw, 0.82rem);
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+
+.tile__arrow {
+  position: absolute;
+  top: clamp(0.85rem, 3.2vw, 1.15rem);
+  right: clamp(0.85rem, 3.2vw, 1.15rem);
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--text-faint);
+  opacity: 0.8;
+  transition: transform 0.25s ease, color 0.25s ease, opacity 0.25s ease;
+}
+
+.tile__arrow svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Live tile */
+.tile--live {
+  background-image: linear-gradient(
+    160deg,
+    rgba(110, 231, 255, 0.12),
+    rgba(167, 139, 250, 0.1) 55%,
+    transparent
+  );
+}
+
+.tile--live:hover,
+.tile--live:focus-visible {
+  border-color: var(--tile-border-hover);
+  background-color: var(--tile-bg-hover);
+  transform: translateY(-4px);
+}
+
+.tile--live:hover .tile__arrow,
+.tile--live:focus-visible .tile__arrow {
+  transform: translate(2px, -2px);
+  color: var(--accent);
+  opacity: 1;
+}
+
+.tile--live:active {
+  transform: translateY(-1px) scale(0.985);
+}
+
+.tile:focus-visible {
+  outline: var(--ring);
+  outline-offset: 3px;
+}
+
+/* Placeholder tiles */
+.tile--soon {
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.55;
+}
+
+.tile--soon .tile__badge {
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-dim);
+}
+
+/* Footer */
+.footer {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+@media (min-width: 36rem) {
+  .tools {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 56rem) {
+  .tools {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
+
+  .tile--live:hover,
+  .tile--live:focus-visible,
+  .tile--live:active {
+    transform: none;
+  }
+}
