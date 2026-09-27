@@ -541,11 +541,11 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
 
   function sendFiles(peerId, files) {
     var peerName = (peers[peerId] && peers[peerId].name) || "device";
-    var index = 0, cards = [], okCount = 0, dc = null, chunk = CHUNK_SMALL;
+    var index = 0, cards = [], okCount = 0, dc = null, chunk = CHUNK_SMALL, lowWater = false;
 
     var ch = openChannel(peerId, peerName, function (channel) {
       dc = channel;
-      var lowWater = "bufferedAmountLowThreshold" in dc;   /* modern browsers */
+      lowWater = "bufferedAmountLowThreshold" in dc;   /* modern browsers */
       chunk = lowWater ? CHUNK_BIG : CHUNK_SMALL;
       if (lowWater) dc.bufferedAmountLowThreshold = HIGH / 2;
       nextFile();
@@ -566,7 +566,9 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
     function nextFile() {
       if (index >= files.length) {
         drain(function () {
-          setTimeout(function () { ch.close(); }, 8000);   /* safety net if an ack is lost */
+          /* Wait for the receiver's ack. A 100 MB file can still be landing
+             after our own buffer is empty, so this has to be patient. */
+          setTimeout(function () { ch.close(); }, 60000);
         });
         return;
       }
@@ -589,29 +591,39 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
       fr.onload = function () {
         var view = new Uint8Array(fr.result);
         var pos = 0;
-        var busy = false;
+        var busy = false, sliceDone = false, timer = null;
+
+        function resume() {
+          if (timer) { clearTimeout(timer); timer = null; }
+          try { dc.onbufferedamountlow = null; } catch (e) {}
+          burst();
+        }
+
+        /* Wait for the buffer to drain. The low-water event normally does it;
+           the timer is a safety net so a missed event can never stall a
+           transfer, and resume() is idempotent so both firing is harmless. */
+        function wait() {
+          if (lowWater) {
+            dc.onbufferedamountlow = resume;
+          }
+          if (!timer) timer = setTimeout(resume, 60);
+        }
+
         function burst() {
-          if (busy) return;
+          if (busy || sliceDone) return;
           busy = true;
           while (pos < view.length) {
             if (dc.readyState !== "open") { busy = false; return; }
-            if (dc.bufferedAmount > HIGH) {
+            if (dc.bufferedAmount > HIGH) { busy = false; wait(); return; }
+            var end = Math.min(pos + chunk, view.length);
+            try {
+              dc.send(view.subarray(pos, end));
+            } catch (e) {
               busy = false;
-              /* Fill the pipe, then wait for the buffer to drain instead of
-                 polling on a timer - this is what keeps throughput high. */
-              if (lowWater) {
-                dc.onbufferedamountlow = function () {
-                  dc.onbufferedamountlow = null;
-                  burst();
-                };
-              } else {
-                setTimeout(burst, 20);
-              }
+              wait();          /* buffer limit hit: back off and retry */
               return;
             }
-            var end = Math.min(pos + chunk, view.length);
             var n = end - pos;
-            dc.send(view.subarray(pos, end));
             pos = end;
             offset += n;
             if (Date.now() - ui.last > 120) {
@@ -620,6 +632,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
             }
           }
           busy = false;
+          sliceDone = true;
           pushFile(file, offset, ui, t0, done);
         }
         burst();
@@ -746,8 +759,11 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
         return;
       }
       if (!file || file.done) return;
-      file.parts.push(ev.data);
-      file.got += ev.data.byteLength;
+      /* Keep each chunk as a Blob part: the browser can page blob data out,
+         which matters once a transfer is tens of megabytes. */
+      var size = ev.data.byteLength;
+      file.parts.push(new Blob([ev.data]));
+      file.got += size;
       if (Date.now() - file.last > 120) {
         file.last = Date.now();
         showProgress(file.ui, file.got, file.size, file.t0);

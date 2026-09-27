@@ -18,9 +18,11 @@ const TARGET = process.argv[2] || "http://127.0.0.1:8787/";
 const WINDOW = process.argv[3] || "1000,800";
 const PORT = 9333;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const BIG_MB = Number(process.env.SHARE_BIG_MB || 6);
+const RECV_TIMEOUT = Number(process.env.SHARE_RECV_TIMEOUT_MS || 60000);
 
 const FILES = [
-  { name: "big.bin", size: 3 * 1024 * 1024 + 777, seed: 0 },
+  { name: "big.bin", size: BIG_MB * 1024 * 1024 + 777, seed: 0 },
   { name: "small.txt", size: 4096, seed: 7 },
 ];
 
@@ -359,7 +361,7 @@ async function main() {
     try {
       await waitFor(
         () => b.eval(`document.querySelectorAll(".save").length === ${FILES.length}`),
-        60000,
+        RECV_TIMEOUT,
         "tab B to receive " + FILES.length + " files"
       );
     } catch (e) {

@@ -103,6 +103,13 @@ How it works:
 3. File bytes travel over a WebRTC data channel, device to device. Cloudflare
    never carries them. The receiver confirms each file, and both sides show
    progress, bytes and live speed.
+   Sending is chunked at 64 KB with flow control: the sender pauses once 4 MB
+   is buffered, resumes on the data channel's low-water event with a timer as a
+   safety net, and backs off if the channel reports a full buffer. Chunks are
+   kept as Blob parts on the receiving side so large files can be paged out.
+   Verified end to end with a 100 MB file (SHA-256 matched, local and live).
+   The sender's tab must stay open, and multi-gigabyte files depend on the
+   receiving device's memory.
 4. Text uses the same channel: paste into "Send text", tap a device, and it
    appears on the other side with a Copy button (32,000 character limit, and
    the same delivery confirmation as files).
