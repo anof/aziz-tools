@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="MobileOptimized" content="width">
+<meta name="HandheldFriendly" content="true">
+<title>share - aziz.tools</title>
+<meta name="description" content="Send files straight between devices on the same WiFi. Nothing is uploaded.">
+<style type="text/css">
+/* Deliberately old-browser friendly: no grid, no flexbox, no rem, no vw/vh,
+   no variables, no calc(). Plain CSS 2.1 plus rounded corners. */
+html { height: 100%; -webkit-text-size-adjust: 100%; }
+body { margin: 0; padding: 0; height: 100%; background-color: #0a0c12;
+  background-image: -webkit-gradient(linear, left top, left bottom, from(#0d1119), to(#080a0f));
+  background-image: -webkit-linear-gradient(top, #0d1119, #080a0f);
+  background-image: linear-gradient(to bottom, #0d1119, #080a0f);
+  color: #eef1f6; font-family: Arial, Helvetica, sans-serif; font-size: 15px; }
+a { color: #5fd0e8; }
+.page { max-width: 680px; margin: 0 auto; padding: 18px 14px 40px 14px; }
+h1 { margin: 0; font-size: 22px; line-height: 1.3; color: #fff; }
+h1 a { color: #fff; text-decoration: none; }
+h1 .slash { color: #5fd0e8; }
+.sub { margin: 6px 0 18px 0; color: #98a2b3; font-size: 13px; line-height: 1.45; }
+.h2 { margin: 22px 0 8px 0; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #6d7787; }
+.namerow { margin: 0 0 4px 0; }
+.namerow label { display: block; margin-bottom: 5px; color: #98a2b3; font-size: 12px; }
+input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 15px; font-family: inherit;
+  color: #eef1f6; background-color: #12161f; border: 1px solid #232a38;
+  -webkit-border-radius: 8px; -moz-border-radius: 8px; border-radius: 8px;
+  -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
+.peers { margin: 0; padding: 0; font-size: 0; }
+.peer { display: inline-block; width: 46.5%; margin: 0 1.5% 1.5% 0; padding: 12px; vertical-align: top;
+  cursor: pointer; font-size: 14px; background-color: #12161f; border: 1px solid #232a38;
+  -webkit-border-radius: 12px; -moz-border-radius: 12px; border-radius: 12px;
+  -webkit-tap-highlight-color: rgba(95,208,232,0.18);
+  -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
+.peer:hover { background-color: #171d29; border-color: #33405a; }
+.peer:active { background-color: #1d2432; }
+.pname { display: block; font-weight: bold; color: #f2f5fa; word-wrap: break-word; }
+.phint { display: block; margin-top: 3px; font-size: 11px; color: #7f8a9c; }
+.waiting { display: block; color: #6d7787; font-size: 13px; line-height: 1.5; }
+.card { margin: 0 0 10px 0; padding: 11px 12px; background-color: #12161f; border: 1px solid #232a38;
+  -webkit-border-radius: 12px; -moz-border-radius: 12px; border-radius: 12px; }
+.cardtop { margin-bottom: 8px; }
+.cname { display: block; font-weight: bold; color: #f2f5fa; word-wrap: break-word; }
+.csize { display: block; margin-top: 2px; font-size: 11px; color: #7f8a9c; }
+.bar { height: 6px; background-color: #1b2130; -webkit-border-radius: 3px; border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 6px; width: 0; background-color: #5fd0e8; }
+.stat { margin-top: 6px; font-size: 11px; color: #8b96a8; }
+.save { display: inline-block; margin-top: 9px; padding: 8px 14px; font-size: 13px; font-weight: bold;
+  color: #06222b; background-color: #5fd0e8; text-decoration: none;
+  -webkit-border-radius: 8px; border-radius: 8px; }
+.note { min-height: 18px; margin: 14px 0 0 0; font-size: 12px; color: #7f8a9c; }
+.note.bad { color: #ffb4b4; }
+.foot { margin: 18px 0 0 0; padding-top: 12px; border-top: 1px solid #1b2130; font-size: 11px; color: #6d7787; }
+@media screen and (min-width: 480px) {
+  .peer { width: 29.5%; }
+}
+@media screen and (min-width: 760px) {
+  .peer { width: 21.5%; }
+  h1 { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1><a href="https://aziz.tools">aziz.tools</a> <span class="slash">/</span> share</h1>
+  <p class="sub">Send files straight between devices on the same WiFi. Nothing is uploaded, nothing is stored.</p>
+
+  <div class="namerow">
+    <label for="name">This device's name</label>
+    <input id="name" type="text" maxlength="24" autocomplete="off" placeholder="e.g. Aziz's phone">
+  </div>
+
+  <div class="h2">Devices nearby</div>
+  <div id="peers" class="peers"><span class="waiting">Connecting&hellip;</span></div>
+
+  <div class="h2">Transfers</div>
+  <div id="transfers" class="transfers"><span class="waiting">Nothing yet. Tap a device to send files.</span></div>
+
+  <p id="note" class="note"></p>
+  <p class="foot"><a href="#" id="room">Not seeing each other?</a> &middot; <a href="https://aziz.tools">aziz.tools</a></p>
+
+</div>
+<input id="file" type="file" multiple style="position:absolute;left:-9999px;top:0;width:1px;height:1px">
+<noscript><p style="padding:0 14px;color:#ffb4b4">This page needs JavaScript, because the transfer runs in your browser.</p></noscript>
+<script type="text/javascript">
+/* share.aziz.tools - browser-to-browser file transfer.
+   ES5 only on purpose: var, function, no arrows, no template literals, no
+   promises in our own code, so older Android/iOS browsers can run it.
+   No libraries, no build step. */
+(function () {
+  "use strict";
+
+  function $(id) { return document.getElementById(id); }
+
+  var peersEl = $("peers"), transfersEl = $("transfers"), nameEl = $("name"),
+      fileEl = $("file"), noteEl = $("note"), roomEl = $("room");
+
+  var RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+  var ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+  var CHUNK_SMALL = 16384;  /* old browsers cap data-channel messages lower */
+  var CHUNK_BIG = 65536;
+  var SLICE = 4194304;      /* read this much from disk, then push it out */
+  var HIGH = 4194304;       /* pause while this much is still buffered */
+
+  var ws = null, peers = {}, conns = {}, pendingPeer = null, tries = 0, waiting = true;
+
+  function note(text, bad) {
+    noteEl.textContent = text || "";
+    noteEl.className = bad ? "note bad" : "note";
+  }
+
+  function fail(e) {
+    note("Transfer failed: " + ((e && e.message) || e || "unknown error"), true);
+  }
+
+  if (!window.WebSocket || !RTC || !window.FileReader || !window.Blob || !window.URL) {
+    note("This browser can't do direct transfers - WebRTC is missing. Please open this page in Chrome, Firefox, Edge or Safari.", true);
+    return;
+  }
+
+  /* ---------- formatting ---------- */
+
+  function fmtSize(b) {
+    if (b < 1024) return b + " B";
+    if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
+    if (b < 1073741824) return (b / 1048576).toFixed(1) + " MB";
+    return (b / 1073741824).toFixed(2) + " GB";
+  }
+
+  /* ---------- transfer cards ---------- */
+
+  function addCard(title, size) {
+    if (waiting) {
+      waiting = false;
+      transfersEl.innerHTML = "";
+    }
+    var card = document.createElement("div");
+    card.className = "card";
+    var top = document.createElement("div");
+    top.className = "cardtop";
+    var nm = document.createElement("span");
+    nm.className = "cname";
+    nm.textContent = title;
+    var sz = document.createElement("span");
+    sz.className = "csize";
+    sz.textContent = size;
+    top.appendChild(nm);
+    top.appendChild(sz);
+    var bar = document.createElement("div");
+    bar.className = "bar";
+    var fill = document.createElement("i");
+    bar.appendChild(fill);
+    var stat = document.createElement("div");
+    stat.className = "stat";
+    stat.textContent = "0%";
+    card.appendChild(top);
+    card.appendChild(bar);
+    card.appendChild(stat);
+    transfersEl.appendChild(card);
+    return { card: card, fill: fill, stat: stat, last: 0 };
+  }
+
+  function showProgress(ui, done, total, t0, extra) {
+    if (!ui) return;
+    var pct = total ? Math.floor((done * 100) / total) : 0;
+    if (pct > 100) pct = 100;
+    ui.fill.style.width = pct + "%";
+    var text = fmtSize(done) + " / " + fmtSize(total) + "  " + pct + "%";
+    if (t0 && done) {
+      var secs = (Date.now() - t0) / 1000;
+      if (secs > 0.2) text += "  " + fmtSize(done / secs) + "/s";
+    }
+    if (extra) text += "  " + extra;
+    ui.stat.textContent = text;
+  }
+
+  /* ---------- signaling ---------- */
+
+  function send(obj) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+  }
+
+  function sendName() {
+    send({ t: "name", name: nameEl.value });
+  }
+
+  function connect() {
+    var room = (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
+    var proto = location.protocol === "https:" ? "wss://" : "ws://";
+    ws = new WebSocket(proto + location.host + "/ws" + (room ? "?r=" + room.toUpperCase() : ""));
+    ws.onopen = function () {
+      tries = 0;
+      note("");
+      sendName();
+    };
+    ws.onmessage = function (ev) {
+      var m;
+      try { m = JSON.parse(ev.data); } catch (e) { return; }
+      handle(m);
+    };
+    ws.onclose = function () {
+      ws = null;
+      tries++;
+      note("Offline - retrying\u2026", true);
+      setTimeout(connect, Math.min(400 * tries, 5000));
+    };
+  }
+
+  function handle(m) {
+    if (m.t === "welcome") {
+      peers = {};
+      var list = m.peers || [];
+      for (var i = 0; i < list.length; i++) peers[list[i].id] = list[i];
+      renderPeers();
+    } else if (m.t === "join") {
+      peers[m.peer.id] = m.peer;
+      renderPeers();
+    } else if (m.t === "peer") {
+      if (peers[m.peer.id]) {
+        peers[m.peer.id].name = m.peer.name;
+        renderPeers();
+      }
+    } else if (m.t === "leave") {
+      delete peers[m.id];
+      renderPeers();
+    } else if (m.t === "signal") {
+      onSignal(m.from, m.data);
+    }
+  }
+
+  function renderPeers() {
+    var ids = [], k;
+    for (k in peers) if (peers.hasOwnProperty(k)) ids.push(k);
+    peersEl.innerHTML = "";
+    if (!ids.length) {
+      var w = document.createElement("span");
+      w.className = "waiting";
+      w.textContent = "Looking for devices\u2026 open this page on your other device on the same WiFi.";
+      peersEl.appendChild(w);
+      return;
+    }
+    for (var i = 0; i < ids.length; i++) {
+      (function (id) {
+        var p = peers[id];
+        var tile = document.createElement("div");
+        tile.className = "peer";
+        tile.setAttribute("role", "button");
+        tile.setAttribute("tabindex", "0");
+        var nm = document.createElement("span");
+        nm.className = "pname";
+        nm.textContent = p.name || "Unnamed device";
+        var hint = document.createElement("span");
+        hint.className = "phint";
+        hint.textContent = "Tap to send files";
+        tile.appendChild(nm);
+        tile.appendChild(hint);
+        tile.onclick = function () {
+          pendingPeer = id;
+          fileEl.value = "";
+          fileEl.click();
+        };
+        peersEl.appendChild(tile);
+      })(ids[i]);
+    }
+  }
+
+  /* ---------- WebRTC plumbing ---------- */
+
+  /* Calls promise-style methods on modern browsers and callback-style methods
+     on old ones, without duplicating every call site. */
+  function call(obj, method, args, ok, fail) {
+    var done = false;
+    function yes() { if (!done) { done = true; ok(); } }
+    function no(e) { if (!done) { done = true; if (fail) fail(e); } }
+    try {
+      var r = obj[method].apply(obj, args);
+      if (r && typeof r.then === "function") { r.then(yes, no); return; }
+    } catch (e) {
+      /* very old implementations only accept callbacks; fall through */
+    }
+    try {
+      obj[method].apply(obj, args.concat([yes, no]));
+    } catch (e2) {
+      no(e2);
+    }
+  }
+
+  function onSignal(from, data) {
+    var c = conns[from];
+    if (!c) {
+      var pc = new RTC(ICE);
+      c = conns[from] = { pc: pc, queue: [] };
+      pc.onicecandidate = function (e) {
+        if (e.candidate) send({ t: "signal", to: from, data: { c: e.candidate } });
+      };
+      pc.ondatachannel = function (e) {
+        receive(from, e.channel);
+      };
+    }
+    if (data.sdp) {
+      call(c.pc, "setRemoteDescription", [new RTCSessionDescription(data.sdp)], function () {
+        for (var i = 0; i < c.queue.length; i++) {
+          try { c.pc.addIceCandidate(new RTCIceCandidate(c.queue[i])); } catch (e) {}
+        }
+        c.queue = [];
+        if (data.sdp.type === "offer") {
+          call(c.pc, "createAnswer", [], function () {
+            call(c.pc, "setLocalDescription", [c.pc.localDescription], function () {
+              send({ t: "signal", to: from, data: { sdp: c.pc.localDescription } });
+            }, fail);
+          }, fail);
+        }
+      }, fail);
+    } else if (data.c) {
+      if (c.pc.remoteDescription) {
+        try { c.pc.addIceCandidate(new RTCIceCandidate(data.c)); } catch (e) {}
+      } else {
+        c.queue.push(data.c);
+      }
+    }
+  }
+
+  /* ---------- sending ---------- */
+
+  fileEl.onchange = function () {
+    if (!pendingPeer || !fileEl.files || !fileEl.files.length) return;
+    sendFiles(pendingPeer, fileEl.files);
+  };
+
+  function sendFiles(peerId, files) {
+    var pc = new RTC(ICE);
+    var dc = pc.createDataChannel("f", { ordered: true });
+    var index = 0;
+    var cards = [];
+    var okCount = 0;
+    var closed = false;
+    var peerName = (peers[peerId] && peers[peerId].name) || "device";
+    var lowWater = "bufferedAmountLowThreshold" in dc;   /* modern browsers */
+    var chunk = lowWater ? CHUNK_BIG : CHUNK_SMALL;
+    if (lowWater) dc.bufferedAmountLowThreshold = HIGH / 2;
+
+    /* Register this connection before the offer goes out: the answer and ICE
+       candidates from the other side must land on this same peer connection. */
+    conns[peerId] = { pc: pc, queue: [] };
+
+    pc.onicecandidate = function (e) {
+      if (e.candidate) send({ t: "signal", to: peerId, data: { c: e.candidate } });
+    };
+
+    dc.onopen = function () {
+      nextFile();
+    };
+
+    /* The receiver confirms each file after the bytes are complete, so
+       "delivered" means delivered - not just handed to the send buffer. */
+    dc.onmessage = function (ev) {
+      if (typeof ev.data !== "string") return;
+      var m;
+      try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.t === "ok") {
+        okCount++;
+        var card = cards[m.i];
+        if (card) showProgress(card, card.size, card.size, card.t0, "delivered");
+        if (okCount >= files.length) done();
+      }
+    };
+
+    call(pc, "createOffer", [], function () {
+      call(pc, "setLocalDescription", [pc.localDescription], function () {
+        send({ t: "signal", to: peerId, data: { sdp: pc.localDescription } });
+      }, fail);
+    }, fail);
+
+    function nextFile() {
+      if (index >= files.length) {
+        drain(function () {
+          setTimeout(done, 8000);   /* safety net if an ack is lost */
+        });
+        return;
+      }
+      var f = files[index++];
+      var ui = addCard("\u2191 " + f.name + "  \u2192  " + peerName, fmtSize(f.size));
+      var t0 = Date.now();
+      ui.size = f.size;
+      ui.t0 = t0;
+      cards.push(ui);
+      dc.send(JSON.stringify({ t: "f", name: f.name, size: f.size, type: f.type || "" }));
+      pushFile(f, 0, ui, t0, function () {
+        showProgress(ui, f.size, f.size, t0, "finishing\u2026");
+        nextFile();
+      });
+    }
+
+    function done() {
+      if (closed) return;
+      closed = true;
+      setTimeout(function () {
+        try { dc.close(); pc.close(); } catch (e) {}
+        delete conns[peerId];
+      }, 300);
+    }
+
+    function pushFile(file, offset, ui, t0, done) {
+      if (offset >= file.size) { done(); return; }
+      var fr = new FileReader();
+      fr.onload = function () {
+        var view = new Uint8Array(fr.result);
+        var pos = 0;
+        var busy = false;
+        function burst() {
+          if (busy) return;
+          busy = true;
+          while (pos < view.length) {
+            if (dc.readyState !== "open") { busy = false; return; }
+            if (dc.bufferedAmount > HIGH) {
+              busy = false;
+              /* Fill the pipe, then wait for the buffer to drain instead of
+                 polling on a timer - this is what keeps throughput high. */
+              if (lowWater) {
+                dc.onbufferedamountlow = function () {
+                  dc.onbufferedamountlow = null;
+                  burst();
+                };
+              } else {
+                setTimeout(burst, 20);
+              }
+              return;
+            }
+            var end = Math.min(pos + chunk, view.length);
+            var n = end - pos;
+            dc.send(view.subarray(pos, end));
+            pos = end;
+            offset += n;
+            if (Date.now() - ui.last > 120) {
+              ui.last = Date.now();
+              showProgress(ui, offset, file.size, t0);
+            }
+          }
+          busy = false;
+          pushFile(file, offset, ui, t0, done);
+        }
+        burst();
+      };
+      fr.onerror = function () { note("Could not read " + file.name, true); };
+      fr.readAsArrayBuffer(file.slice(offset, Math.min(offset + SLICE, file.size)));
+    }
+
+    function drain(cb) {
+      if (dc.readyState !== "open") { cb(); return; }
+      if (dc.bufferedAmount > 0) { setTimeout(function () { drain(cb); }, 50); return; }
+      cb();
+    }
+  }
+
+  /* ---------- receiving ---------- */
+
+  function receive(from, dc) {
+    dc.binaryType = "arraybuffer";
+    var file = null;
+    var seq = 0;
+    dc.onmessage = function (ev) {
+      if (typeof ev.data === "string") {
+        var m;
+        try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.t !== "f") return;
+        var who = (peers[from] && peers[from].name) || "device";
+        file = {
+          index: seq++,
+          name: m.name || "file",
+          size: m.size || 0,
+          type: m.type || "application/octet-stream",
+          got: 0,
+          parts: [],
+          done: false,
+          t0: Date.now(),
+          last: 0,
+          ui: addCard("\u2193 " + (m.name || "file") + "  \u2190  " + who, fmtSize(m.size || 0))
+        };
+        if (!file.size) finish();
+        return;
+      }
+      if (!file || file.done) return;
+      file.parts.push(ev.data);
+      file.got += ev.data.byteLength;
+      if (Date.now() - file.last > 120) {
+        file.last = Date.now();
+        showProgress(file.ui, file.got, file.size, file.t0);
+      }
+      if (file.got >= file.size) finish();
+    };
+
+    function finish() {
+      file.done = true;
+      showProgress(file.ui, file.got, file.size, file.t0, "received");
+      var url = URL.createObjectURL(new Blob(file.parts, { type: file.type }));
+      var a = document.createElement("a");
+      a.className = "save";
+      a.href = url;
+      a.download = file.name;
+      a.textContent = "Save " + file.name;
+      file.ui.card.appendChild(a);
+      file.parts = [];
+      try { dc.send(JSON.stringify({ t: "ok", i: file.index })); } catch (e) {}
+    }
+
+    dc.onclose = function () {
+      delete conns[from];
+    };
+  }
+
+  /* ---------- name + room code ---------- */
+
+  try {
+    var saved = localStorage.getItem("share.name");
+    if (saved) nameEl.value = saved;
+  } catch (e) {}
+  if (!nameEl.value) {
+    nameEl.value = /Android/i.test(navigator.userAgent) ? "Android" :
+                   /iPhone|iPad|iPod/i.test(navigator.userAgent) ? "iPhone" : "Computer";
+  }
+  nameEl.onchange = function () {
+    try { localStorage.setItem("share.name", nameEl.value); } catch (e) {}
+    sendName();
+  };
+  nameEl.onblur = nameEl.onchange;
+
+  roomEl.onclick = function (e) {
+    e.preventDefault();
+    var current = (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
+    var code = prompt("Enter the same short code on both devices:", current);
+    if (code === null) return;
+    code = String(code).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    location.search = code ? "?r=" + code : "";
+  };
+
+  connect();
+})();
+</script>
+</body>
+</html>

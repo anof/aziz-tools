@@ -1,0 +1,27 @@
+# share.aziz.tools - browser-to-browser file sharing.
+#
+# Signaling only. File bytes travel device-to-device over WebRTC and never
+# reach Cloudflare. One Durable Object per network (keyed by public IP) or per
+# explicit room code (?r=CODE). No storage API is used: peer names live on the
+# socket attachment, which survives hibernation for free.
+
+name = "aziz-tools-share"
+main = "src/index.js"
+compatibility_date = "2026-09-26"
+
+routes = [
+  { pattern = "share.aziz.tools", custom_domain = true }
+]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[durable_objects]
+bindings = [
+  { name = "ROOMS", class_name = "Room" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
