@@ -131,3 +131,38 @@ Limits worth knowing: devices must share a public IP (so VPN, iCloud Private
 Relay or one device on cellular can hide a peer - use a room code then), WiFi
 networks with client isolation block peer-to-peer traffic, and received files
 are held in memory until saved, so very large files depend on available RAM.
+
+## shade.aziz.tools
+
+Which side of the bus is in shade. One static file, no server-side code - the
+Worker only serves it.
+
+| File | What it is |
+| --- | --- |
+| `shade/public/index.html` | The whole app: markup, CSS, sun maths and UI in one request |
+| `shade/wrangler.toml` | Worker + `shade.aziz.tools` custom domain |
+
+How it works:
+
+1. Sun position is computed in the browser with the standard low-precision
+   solar equations (the same maths SunCalc uses) for the boarding point and the
+   current time.
+2. Bus heading comes from the public OSRM demo server: the heading roughly
+   400 m after the boarding point, because the side you sit on is decided where
+   you get on, not at the end of the route. If OSRM cannot be reached it falls
+   back to the straight-line bearing and says so.
+3. Shade is the side opposite the sun. Sun overhead (`>70`), sun below the
+   horizon, or sun straight ahead/behind all give "either side" with the reason.
+4. Address search is Photon, "use my location" is the browser geolocation API,
+   and home/work trips are saved in this browser's localStorage.
+
+Deploy and test:
+
+```sh
+npx wrangler deploy -c shade/wrangler.toml
+node tools/shade-test.mjs https://shade.aziz.tools/
+```
+
+The test drives the real UI: it uses a simulated GPS fix, searches two real
+addresses, checks the verdict and the facts line, then saves a trip and reloads
+the page to confirm it comes back.

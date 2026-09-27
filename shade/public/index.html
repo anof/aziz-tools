@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="MobileOptimized" content="width">
+<meta name="HandheldFriendly" content="true">
+<title>shade - aziz.tools</title>
+<meta name="description" content="Which side of the bus is in shade right now.">
+<style type="text/css">
+/* Minimal, no dependencies, old-browser friendly: no grid, no flexbox,
+   no rem/vw/vh, no variables, no calc(). */
+html { height: 100%; -webkit-text-size-adjust: 100%; }
+body { margin: 0; padding: 0; height: 100%; background-color: #0a0c12;
+  background-image: -webkit-gradient(linear, left top, left bottom, from(#0d1119), to(#080a0f));
+  background-image: -webkit-linear-gradient(top, #0d1119, #080a0f);
+  background-image: linear-gradient(to bottom, #0d1119, #080a0f);
+  color: #eef1f6; font-family: Arial, Helvetica, sans-serif; font-size: 15px; }
+a { color: #5fd0e8; }
+.page { position: relative; max-width: 560px; min-height: 100%; margin: 0 auto; padding: 18px 14px 64px 14px;
+  -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
+h1 { margin: 0; font-size: 22px; line-height: 1.3; color: #fff; }
+h1 a { color: #fff; text-decoration: none; }
+h1 .slash { color: #5fd0e8; }
+.sub { margin: 6px 0 16px 0; color: #98a2b3; font-size: 13px; line-height: 1.45; }
+.row { margin: 0 0 10px 0; }
+.row input[type=text] { width: 100%; max-width: 100%; padding: 11px 12px; font-size: 15px; font-family: inherit;
+  color: #eef1f6; background-color: #12161f; border: 1px solid #232a38; -webkit-border-radius: 10px; border-radius: 10px;
+  -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
+.row input[type=text]:focus { outline: none; border-color: #33405a; }
+.loc { display: inline-block; margin: 0 0 0 6px; padding: 10px 12px; font-size: 15px; font-family: inherit;
+  color: #cfe9f2; background-color: #1a2130; border: 1px solid #2c3648; cursor: pointer;
+  -webkit-border-radius: 10px; border-radius: 10px; }
+.loc:active { background-color: #222b3c; }
+.loc[disabled] { opacity: 0.5; }
+.fieldline { display: block; font-size: 0; }
+.fieldline input[type=text] { display: inline-block; width: 82%; vertical-align: middle; margin: 0; }
+.fieldline .loc { display: inline-block; width: 15%; margin: 0 0 0 3%; vertical-align: middle; text-align: center; padding: 10px 0; }
+.list { margin: 0 0 10px 0; padding: 0; list-style: none; font-size: 13px; }
+.list li { padding: 9px 11px; background-color: #12161f; border: 1px solid #232a38; border-top: 0; cursor: pointer; }
+.list li:first-child { border-top: 1px solid #232a38; -webkit-border-radius: 10px 10px 0 0; border-radius: 10px 10px 0 0; }
+.list li:last-child { -webkit-border-radius: 0 0 10px 10px; border-radius: 0 0 10px 10px; }
+.list li:only-child { -webkit-border-radius: 10px; border-radius: 10px; }
+.list li:hover { background-color: #171d29; }
+.list .small { color: #7f8a9c; }
+.quick { margin: 4px 0 0 0; font-size: 0; }
+.quick button { margin: 0 6px 6px 0; padding: 9px 12px; font-size: 13px; font-family: inherit; color: #dfe6f2;
+  background-color: #12161f; border: 1px solid #232a38; cursor: pointer;
+  -webkit-border-radius: 9px; border-radius: 9px; }
+.quick button:hover { background-color: #171d29; border-color: #33405a; }
+.quick button.wide { color: #06222b; background-color: #5fd0e8; border-color: #5fd0e8; font-weight: bold; }
+.saveRow { margin: 0 0 8px 0; font-size: 0; }
+.saveRow button { margin: 0 6px 6px 0; padding: 8px 11px; font-size: 12px; font-family: inherit; color: #cfe9f2;
+  background-color: #1a2130; border: 1px solid #2c3648; cursor: pointer; -webkit-border-radius: 8px; border-radius: 8px; }
+.card { margin: 16px 0 0 0; padding: 14px; background-color: #12161f; border: 1px solid #232a38;
+  -webkit-border-radius: 14px; border-radius: 14px; }
+.side { margin: 0; font-size: 30px; line-height: 1.15; font-weight: bold; letter-spacing: -0.5px; color: #5fd0e8; }
+.side small { display: block; margin-top: 6px; font-size: 13px; font-weight: normal; letter-spacing: 0; color: #98a2b3; }
+.why { margin: 10px 0 0 0; font-size: 14px; line-height: 1.5; color: #dfe6f2; }
+.facts { margin: 12px 0 0 0; padding-top: 10px; border-top: 1px solid #1b2130; font-size: 11px; line-height: 1.7; color: #7f8a9c; }
+.art { display: block; margin: 14px auto 0 auto; }
+.note { min-height: 18px; margin: 14px 0 0 0; font-size: 12px; color: #7f8a9c; }
+.note.bad { color: #ffb4b4; }
+.foot { position: absolute; left: 14px; right: 14px; bottom: 16px; margin: 0; padding-top: 12px;
+  border-top: 1px solid #1b2130; font-size: 11px; color: #6d7787; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1><a href="https://aziz.tools">aziz.tools</a> <span class="slash">/</span> shade</h1>
+  <p class="sub">Which side of the bus is in shade right now. Nothing leaves your browser except an address lookup.</p>
+
+  <div class="row"><span class="fieldline">
+    <input id="from" type="text" autocomplete="off" placeholder="From (bus stop or address)">
+    <button class="loc" id="fromLoc" type="button" title="Use my location">&#128205;</button>
+  </span></div>
+
+  <div class="row"><span class="fieldline">
+    <input id="to" type="text" autocomplete="off" placeholder="To (where you are going)">
+    <button class="loc" id="toLoc" type="button" title="Use my location">&#128205;</button>
+  </span></div>
+
+  <ul class="list" id="list" style="display:none"></ul>
+
+  <div class="quick">
+    <button id="favHome" type="button">&#127968; To home</button>
+    <button id="favWork" type="button">&#128188; To work</button>
+    <button id="saveBtn" type="button">&#128190; Save</button>
+  </div>
+  <div class="saveRow" id="saveRow" style="display:none"></div>
+
+  <div class="card">
+    <p class="side" id="side">Set both places</p>
+    <p class="why" id="why">Pick where you are boarding and where you are going, and I will work out which side of the bus is out of the sun.</p>
+    <svg class="art" id="art" width="132" height="132" viewBox="0 0 140 140" aria-hidden="true">
+      <circle cx="70" cy="70" r="66" fill="none" stroke="#1b2130"></circle>
+      <rect id="shadeHalf" x="-99" y="0" width="0" height="0" fill="rgba(95,208,232,0.20)"></rect>
+      <rect x="45" y="26" width="50" height="88" rx="10" fill="#12161f" stroke="#2c3648" stroke-width="2"></rect>
+      <path id="nose" d="M64 20 L70 12 L76 20" fill="none" stroke="#5fd0e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+      <circle id="sun" cx="70" cy="12" r="7" fill="#ffd479" stroke="#ffab1f" stroke-width="1.5"></circle>
+      <line id="ray" x1="70" y1="20" x2="70" y2="30" stroke="#ffd479" stroke-width="2" stroke-dasharray="3 3"></line>
+    </svg>
+    <p class="facts" id="facts"></p>
+  </div>
+
+  <p class="note" id="note"></p>
+  <p class="foot"><span id="stamp"></span> &middot; <a href="https://aziz.tools">aziz.tools</a></p>
+
+</div>
+<script type="text/javascript">
+/* shade.aziz.tools - which side of the bus is out of the sun.
+   Everything runs in the browser: sun position is computed from the standard
+   low-precision solar equations, the route comes from OSRM, address search
+   from Photon. No accounts, no storage server, no build step. */
+(function () {
+  "use strict";
+
+  function $(id) { return document.getElementById(id); }
+  var fromEl = $("from"), toEl = $("to"), listEl = $("list"), sideEl = $("side"), whyEl = $("why"),
+      factsEl = $("facts"), noteEl = $("note"), stampEl = $("stamp"), saveRow = $("saveRow"),
+      sunEl = $("sun"), rayEl = $("ray"), shadeHalf = $("shadeHalf");
+
+  var FAV_KEY = "shade.fav", LAST_KEY = "shade.last";
+  var state = { from: null, to: null, active: "", timer: null };
+
+  /* ---------- storage ---------- */
+
+  function read(key, fallback) {
+    try {
+      var v = localStorage.getItem(key);
+      return v ? JSON.parse(v) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+  function write(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  }
+
+  /* ---------- tiny JSON fetch (XHR: works on old browsers too) ---------- */
+
+  function getJSON(url, ok, fail) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.timeout = 15000;
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { ok(JSON.parse(xhr.responseText)); } catch (e) { if (fail) fail(e); }
+      } else if (fail) {
+        fail(new Error("lookup failed (" + xhr.status + ")"));
+      }
+    };
+    xhr.ontimeout = function () { if (fail) fail(new Error("lookup timed out")); };
+    xhr.onerror = function () { if (fail) fail(new Error("network error")); };
+    try { xhr.send(); } catch (e) { if (fail) fail(e); }
+  }
+
+  function note(text, bad) {
+    noteEl.textContent = text || "";
+    noteEl.className = bad ? "note bad" : "note";
+  }
+
+  /* ---------- places ---------- */
+
+  function placeLabel(p) {
+    var parts = [];
+    if (p.name) parts.push(p.name);
+    if (p.housenumber && p.street) parts.push(p.housenumber + " " + p.street);
+    else if (p.street) parts.push(p.street);
+    if (p.district && !p.city) parts.push(p.district);
+    if (p.city) parts.push(p.city);
+    if (parts.length < 2 && p.state) parts.push(p.state);
+    if (p.country) parts.push(p.country);
+    return parts.slice(0, 3).join(", ") || "place";
+  }
+
+  function reverse(lat, lng, cb) {
+    var fallback = lat.toFixed(4) + ", " + lng.toFixed(4);
+    getJSON("https://photon.komoot.io/reverse?limit=1&lang=en&lat=" + lat + "&lon=" + lng,
+      function (d) {
+        var f = (d.features || [])[0];
+        cb(f ? placeLabel(f.properties) : fallback);
+      },
+      function () { cb(fallback); });
+  }
+
+  function search(q, cb) {
+    getJSON("https://photon.komoot.io/api/?limit=5&lang=en&q=" + encodeURIComponent(q),
+      function (d) {
+        var out = [], feats = d.features || [], i;
+        for (i = 0; i < feats.length; i++) {
+          var c = (feats[i].geometry && feats[i].geometry.coordinates) || [];
+          if (c.length === 2) out.push({ lat: c[1], lng: c[0], label: placeLabel(feats[i].properties || {}) });
+        }
+        cb(out);
+      },
+      function () { cb([]); });
+  }
+
+  /* ---------- geometry ---------- */
+
+  function rad(d) { return d * Math.PI / 180; }
+  function deg(r) { return r * 180 / Math.PI; }
+
+  function distance(aLat, aLng, bLat, bLng) {
+    var R = 6371000, dLat = rad(bLat - aLat), dLng = rad(bLng - aLng);
+    var s = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+  }
+
+  function bearing(aLat, aLng, bLat, bLng) {
+    var dLng = rad(bLng - aLng), y = Math.sin(dLng) * Math.cos(rad(bLat));
+    var x = Math.cos(rad(aLat)) * Math.sin(rad(bLat)) - Math.sin(rad(aLat)) * Math.cos(rad(bLat)) * Math.cos(dLng);
+    return (deg(Math.atan2(y, x)) + 360) % 360;
+  }
+
+  /* Standard low-precision solar position (Astronomical Almanac / NOAA
+     equations, same maths SunCalc uses). Returns compass degrees + altitude. */
+  function sunPosition(date, lat, lng) {
+    var dayMs = 86400000, J1970 = 2440588, J2000 = 2451545;
+    var e = rad(23.4397);
+    var d = date.valueOf() / dayMs - 0.5 + J1970 - J2000;
+    var M = rad(357.5291 + 0.98560028 * d);
+    var L = M + rad(1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M)) + rad(102.9372) + Math.PI;
+    var dec = Math.asin(Math.sin(L) * Math.sin(e));
+    var ra = Math.atan2(Math.sin(L) * Math.cos(e), Math.cos(L));
+    var lw = rad(-lng);
+    var theta = rad(280.16 + 360.9856235 * d) - lw;
+    var H = theta - ra;
+    var phi = rad(lat);
+    var altitude = Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H));
+    var azimuth = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
+    return { azimuth: (deg(azimuth) + 180 + 360) % 360, altitude: deg(altitude) };
+  }
+
+  /* Heading of the street route just after the boarding point: the bus can
+     turn later, but the side you sit on is decided where you get on. */
+  function routeHeading(from, to, cb) {
+    var url = "https://router.project-osrm.org/route/v1/driving/" +
+      from.lng + "," + from.lat + ";" + to.lng + "," + to.lat + "?overview=full&geometries=geojson";
+    getJSON(url, function (d) {
+      var r = (d.routes || [])[0];
+      var pts = r && r.geometry && r.geometry.coordinates;
+      if (!pts || pts.length < 2) { cb(null); return; }
+      var travelled = 0, i;
+      for (i = 1; i < pts.length; i++) {
+        travelled += distance(pts[i - 1][1], pts[i - 1][0], pts[i][1], pts[i][0]);
+        if (travelled >= 400) break;
+      }
+      var last = pts[Math.min(i, pts.length - 1)];
+      cb({
+        heading: bearing(from.lat, from.lng, last[1], last[0]),
+        source: "street route",
+        metres: r.distance || 0
+      });
+    }, function () { cb(null); });
+  }
+
+  /* ---------- the actual answer ---------- */
+
+  function decide(heading, sun) {
+    if (sun.altitude <= 0) return { side: "any", why: "The sun is below the horizon - sit anywhere." };
+    if (sun.altitude > 70) {
+      return { side: "any", why: "The sun is " + Math.round(sun.altitude) + " degrees up, almost overhead, so the shade is under the bus." };
+    }
+    var rel = ((sun.azimuth - heading + 540) % 360) - 180;   /* 0 ahead, +right, -left */
+    if (Math.abs(rel) < 15) return { side: "any", why: "The sun is straight ahead of the bus, so both sides catch it." };
+    if (Math.abs(rel) > 165) return { side: "any", why: "The sun is directly behind the bus, so both sides are level." };
+    var sunSide = rel > 0 ? "right" : "left";
+    return {
+      side: sunSide === "right" ? "left" : "right",
+      why: "The sun is " + Math.round(sun.altitude) + " degrees up and " +
+           Math.round(Math.abs(rel)) + " degrees to your " + sunSide + ".",
+      rel: rel
+    };
+  }
+
+  function draw(rel, side) {
+    var a = rad(rel || 0);
+    var cx = 70 + 58 * Math.sin(a), cy = 70 - 58 * Math.cos(a);
+    sunEl.setAttribute("cx", cx.toFixed(1));
+    sunEl.setAttribute("cy", cy.toFixed(1));
+    rayEl.setAttribute("x1", cx.toFixed(1));
+    rayEl.setAttribute("y1", cy.toFixed(1));
+    rayEl.setAttribute("x2", (70 + 34 * Math.sin(a)).toFixed(1));
+    rayEl.setAttribute("y2", (70 - 34 * Math.cos(a)).toFixed(1));
+    if (side === "left" || side === "right") {
+      shadeHalf.setAttribute("x", side === "left" ? "46" : "70");
+      shadeHalf.setAttribute("y", "28");
+      shadeHalf.setAttribute("width", "24");
+      shadeHalf.setAttribute("height", "84");
+    } else {
+      shadeHalf.setAttribute("width", "0");
+      shadeHalf.setAttribute("height", "0");
+    }
+  }
+
+  function render(result, sun, heading, source, when) {
+    var text = result.side === "left" ? "Sit on the LEFT" :
+               result.side === "right" ? "Sit on the RIGHT" : "Either side";
+    sideEl.innerHTML = text + "<small>" + (result.side === "any" ? "no strong shade side" : "for shade") + "</small>";
+    whyEl.textContent = result.why;
+    factsEl.innerHTML =
+      "Sun " + Math.round(sun.azimuth) + "&deg; compass, " + Math.round(sun.altitude) + "&deg; up<br>" +
+      "Bus heading " + Math.round(heading) + "&deg; (" + source + ")<br>" +
+      "Checked " + when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    draw(result.rel, result.side);
+  }
+
+  /* ---------- running it ---------- */
+
+  function evaluate() {
+    if (!state.from || !state.to) return;
+    var now = new Date();
+    var sun = sunPosition(now, state.from.lat, state.from.lng);
+    write(LAST_KEY, { from: state.from, to: state.to });
+    routeHeading(state.from, state.to, function (route) {
+      var heading, source;
+      if (route && isFinite(route.heading)) {
+        heading = route.heading;
+        source = route.source;
+      } else {
+        heading = bearing(state.from.lat, state.from.lng, state.to.lat, state.to.lng);
+        source = "straight line - no street route available";
+      }
+      var result = decide(heading, sun);
+      render(result, sun, heading, source, now);
+      note("");
+    });
+  }
+
+  function setPlace(which, place) {
+    state[which] = place;
+    (which === "from" ? fromEl : toEl).value = place.label;
+    hideList();
+    evaluate();
+  }
+
+  /* ---------- search box ---------- */
+
+  function hideList() {
+    listEl.style.display = "none";
+    listEl.innerHTML = "";
+  }
+
+  function showList(items) {
+    listEl.innerHTML = "";
+    if (!items.length) { hideList(); return; }
+    var i;
+    for (i = 0; i < items.length; i++) {
+      (function (item) {
+        var li = document.createElement("li");
+        li.textContent = item.label;
+        li.onclick = function () { setPlace(state.active, item); };
+        listEl.appendChild(li);
+      })(items[i]);
+    }
+    listEl.style.display = "block";
+  }
+
+  function wireInput(which, el) {
+    el.onfocus = function () { state.active = which; };
+    el.oninput = function () {
+      state.active = which;
+      var q = el.value;
+      if (state.timer) clearTimeout(state.timer);
+      if (q.replace(/\s/g, "").length < 3) { hideList(); return; }
+      state.timer = setTimeout(function () {
+        search(q, function (items) {
+          if (state.active === which && el.value === q) showList(items);
+        });
+      }, 350);
+    };
+  }
+
+  wireInput("from", fromEl);
+  wireInput("to", toEl);
+
+  /* ---------- current location ---------- */
+
+  function useLocation(which, button) {
+    if (!navigator.geolocation) { note("This browser cannot give its location.", true); return; }
+    button.disabled = true;
+    button.innerHTML = "...";
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      var lat = pos.coords.latitude, lng = pos.coords.longitude;
+      reverse(lat, lng, function (label) {
+        setPlace(which, { lat: lat, lng: lng, label: label });
+        button.disabled = false;
+        button.innerHTML = "&#128205;";
+      });
+    }, function () {
+      note("Could not get your location. Allow location access, or type an address.", true);
+      button.disabled = false;
+      button.innerHTML = "&#128205;";
+    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+  }
+
+  $("fromLoc").onclick = function () { useLocation("from", this); };
+  $("toLoc").onclick = function () { useLocation("to", this); };
+
+  /* ---------- saved trips ---------- */
+
+  function favorites() { return read(FAV_KEY, {}); }
+
+  function saveFavorite(key) {
+    if (!state.from || !state.to) { note("Set both places before saving.", true); return; }
+    var f = favorites();
+    f[key] = { from: state.from, to: state.to };
+    write(FAV_KEY, f);
+    saveRow.style.display = "none";
+    note((key === "home" ? "Home" : "Work") + " trip saved in this browser.");
+    refreshFavButtons();
+  }
+
+  function loadFavorite(key) {
+    var f = favorites()[key];
+    if (!f) { note("No " + key + " trip saved yet. Set the two places and tap Save.", true); return; }
+    state.from = f.from;
+    state.to = f.to;
+    fromEl.value = f.from.label;
+    toEl.value = f.to.label;
+    hideList();
+    note("");
+    evaluate();
+  }
+
+  function refreshFavButtons() {
+    var f = favorites();
+    $("favHome").innerHTML = "&#127968; To home" + (f.home ? "" : " (empty)");
+    $("favWork").innerHTML = "&#128188; To work" + (f.work ? "" : " (empty)");
+  }
+
+  $("favHome").onclick = function () { loadFavorite("home"); };
+  $("favWork").onclick = function () { loadFavorite("work"); };
+
+  $("saveBtn").onclick = function () {
+    var f = favorites(), html = "";
+    html += "<button id='saveHome' type='button'>Save as home</button>";
+    html += "<button id='saveWork' type='button'>Save as work</button>";
+    if (f.home || f.work) html += "<button id='clearFav' type='button'>Clear saved</button>";
+    saveRow.innerHTML = html;
+    saveRow.style.display = "block";
+    $("saveHome").onclick = function () { saveFavorite("home"); };
+    $("saveWork").onclick = function () { saveFavorite("work"); };
+    if ($("clearFav")) $("clearFav").onclick = function () {
+      write(FAV_KEY, {});
+      saveRow.style.display = "none";
+      note("Saved trips cleared.");
+      refreshFavButtons();
+    };
+  };
+
+  /* ---------- boot ---------- */
+
+  refreshFavButtons();
+  var last = read(LAST_KEY, null);
+  if (last && last.from && last.to) {
+    state.from = last.from;
+    state.to = last.to;
+    fromEl.value = last.from.label;
+    toEl.value = last.to.label;
+    evaluate();
+  }
+
+  setInterval(function () {
+    var now = new Date();
+    stampEl.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (state.from && state.to) evaluate();
+  }, 60000);
+  stampEl.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+})();
+</script>
+</body>
+</html>

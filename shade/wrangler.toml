@@ -1,0 +1,13 @@
+# shade.aziz.tools - static page, no server-side code.
+# Everything runs in the browser; the Worker only serves the file.
+
+name = "aziz-tools-shade"
+compatibility_date = "2026-09-26"
+workers_dev = false
+
+routes = [
+  { pattern = "shade.aziz.tools", custom_domain = true }
+]
+
+[assets]
+directory = "./public"
