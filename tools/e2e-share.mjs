@@ -177,6 +177,24 @@ const readSaves = `
 // connection/ICE/data-channel state without the app exposing any test hooks.
 const INSTRUMENT = `
 (function () {
+  /* Count every byte that goes through the signaling socket, so we can show
+     how little of a transfer actually touches the server. */
+  var OrigWS = window.WebSocket;
+  function WrappedWS(url, protocols) {
+    var s = protocols ? new OrigWS(url, protocols) : new OrigWS(url);
+    var send = s.send.bind(s);
+    s.send = function (d) {
+      try { window.__wsOut = (window.__wsOut || 0) + (typeof d === "string" ? d.length : (d.byteLength || 0)); } catch (e) {}
+      return send(d);
+    };
+    s.addEventListener("message", function (e) {
+      try { window.__wsIn = (window.__wsIn || 0) + (typeof e.data === "string" ? e.data.length : (e.data.byteLength || 0)); } catch (er) {}
+    });
+    return s;
+  }
+  WrappedWS.prototype = OrigWS.prototype;
+  window.WebSocket = WrappedWS;
+
   function describe(pc) {
     var dc = pc.__dc;
     return dc ? ("dc " + dc.readyState + " buffered=" + dc.bufferedAmount) : "no dc";
@@ -218,6 +236,43 @@ const INSTRUMENT = `
   }
   Wrapped.prototype = Orig.prototype;
   window.RTCPeerConnection = Wrapped;
+})()
+`;
+
+// Which network path did the file actually take? host/srflx = direct between
+// the two devices; relay = through a TURN server (we have none).
+const ICE_REPORT = `
+(async function () {
+  var pcs = window.__pcs || [];
+  var best = null, bestList = null;
+  for (var i = 0; i < pcs.length; i++) {
+    var stats = pcs[i].getStats();
+    if (stats && typeof stats.then === "function") stats = await stats;
+    var list = [];
+    stats.forEach(function (r) { list.push(r); });
+    if (best) continue;
+    for (var j = 0; j < list.length; j++) {
+      var r = list[j];
+      if (r.type === "candidate-pair" && r.state === "succeeded" && (r.bytesSent > 0 || r.bytesReceived > 0)) {
+        best = r;
+        bestList = list;
+      }
+    }
+  }
+  if (!best) return JSON.stringify({ pair: null, wsIn: window.__wsIn || 0, wsOut: window.__wsOut || 0 });
+  function byId(id) { for (var j = 0; j < bestList.length; j++) if (bestList[j].id === id) return bestList[j]; return {}; }
+  var local = byId(best.localCandidateId), remote = byId(best.remoteCandidateId);
+  return JSON.stringify({
+    pair: {
+      local: local.candidateType,
+      remote: remote.candidateType,
+      protocol: local.protocol || best.protocol,
+      bytesSent: best.bytesSent,
+      bytesReceived: best.bytesReceived
+    },
+    wsIn: window.__wsIn || 0,
+    wsOut: window.__wsOut || 0
+  });
 })()
 `;
 
@@ -324,6 +379,8 @@ async function main() {
         });
       })()`)
     );
+    const pathA = JSON.parse(await a.eval(ICE_REPORT, true));
+    const pathB = JSON.parse(await b.eval(ICE_REPORT, true));
 
     console.log("");
     console.log("sender progress:  ", JSON.parse(senderStats).join(" | "));
@@ -336,6 +393,12 @@ async function main() {
         (layout.footerTop >= layout.contentEnd ? "no overlap" : "OVERLAP")
     );
     if (layout.footerTop < layout.contentEnd) failures++;
+    const describe = (p) => p.pair
+      ? `file went ${p.pair.local} -> ${p.pair.remote} over ${p.pair.protocol} (${p.pair.bytesSent} B out); signaling: ${p.wsOut} B out / ${p.wsIn} B in`
+      : `no candidate pair observed; signaling: ${p.wsOut} B out / ${p.wsIn} B in`;
+    console.log("path (sender):    " + describe(pathA));
+    console.log("path (receiver):  " + describe(pathB));
+    if (pathA.pair && pathA.pair.local === "relay") failures++;
     console.log("");
 
     for (let i = 0; i < FILES.length; i++) {
