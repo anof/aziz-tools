@@ -8,6 +8,8 @@
 name = "aziz-tools-share"
 main = "src/index.js"
 compatibility_date = "2026-09-26"
+# Only reachable at share.aziz.tools; no workers.dev URL is needed.
+workers_dev = false
 
 routes = [
   { pattern = "share.aziz.tools", custom_domain = true }
