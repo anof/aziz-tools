@@ -442,7 +442,23 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
     };
 
     dc.onopen = function () {
+      clearTimeout(connectTimer);
       nextFile();
+    };
+
+    /* If no direct path can be opened (strict NAT on both sides), say so
+       instead of leaving the sender staring at a stuck transfer. */
+    var connectTimer = setTimeout(function () {
+      if (dc.readyState !== "open" && !closed) {
+        note("Couldn't open a direct path to " + peerName +
+          ". Some networks block device-to-device connections - try both devices on the same WiFi.", true);
+      }
+    }, 20000);
+    pc.onconnectionstatechange = function () {
+      if (pc.connectionState === "failed") {
+        clearTimeout(connectTimer);
+        note("Couldn't open a direct path to " + peerName + ". The two networks are blocking peer-to-peer traffic.", true);
+      }
     };
 
     /* The receiver confirms each file after the bytes are complete, so
@@ -488,6 +504,7 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
     function done() {
       if (closed) return;
       closed = true;
+      clearTimeout(connectTimer);
       setTimeout(function () {
         try { dc.close(); pc.close(); } catch (e) {}
         delete conns[peerId];
