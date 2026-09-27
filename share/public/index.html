@@ -56,6 +56,15 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
 .note.bad { color: #ffb4b4; }
 .foot { position: absolute; left: 14px; right: 14px; bottom: 16px; margin: 0; padding-top: 12px;
   border-top: 1px solid #1b2130; font-size: 11px; color: #6d7787; }
+.pairbox { margin: 14px 0 0 0; padding: 12px; background-color: #12161f; border: 1px solid #232a38;
+  -webkit-border-radius: 12px; -moz-border-radius: 12px; border-radius: 12px; }
+.pairtext { margin: 0 0 8px 0; font-size: 12px; line-height: 1.5; color: #98a2b3; }
+.paircode { font-size: 20px; font-weight: bold; letter-spacing: 2px; color: #5fd0e8; }
+.pairbox input { width: 130px; padding: 8px 10px; font-size: 15px; font-family: inherit; text-transform: uppercase;
+  color: #eef1f6; background-color: #0a0c12; border: 1px solid #232a38;
+  -webkit-border-radius: 8px; border-radius: 8px; }
+.pairbox button { padding: 8px 14px; margin-left: 6px; font-size: 13px; font-weight: bold; font-family: inherit;
+  color: #06222b; background-color: #5fd0e8; border: 0; -webkit-border-radius: 8px; border-radius: 8px; cursor: pointer; }
 @media screen and (min-width: 480px) {
   .peer { width: 29.5%; }
 }
@@ -83,7 +92,16 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
   <div id="transfers" class="transfers"><span class="waiting">Nothing yet. Tap a device to send files.</span></div>
 
   <p id="note" class="note"></p>
-  <p class="foot"><span id="netlabel"></span><a href="#" id="room">Not seeing each other?</a> &middot; <a href="https://aziz.tools">aziz.tools</a></p>
+  <p class="foot"><span id="netlabel"></span><a href="#" id="pair">Pair a device</a> &middot; <a href="#" id="room">Not seeing each other?</a> &middot; <a href="https://aziz.tools">aziz.tools</a></p>
+
+  <div id="pairbox" class="pairbox" style="display:none">
+    <p class="pairtext" id="pairtext"></p>
+    <div id="pairjoinrow">
+      <input id="paircode" type="text" maxlength="10" autocomplete="off" spellcheck="false" placeholder="CODE">
+      <button id="pairjoin" type="button">Join</button>
+    </div>
+    <p class="pairtext"><a href="#" id="paircreate">Create a code for this device</a> &middot; <a href="#" id="pairclose">Close</a></p>
+  </div>
 
 </div>
 <input id="file" type="file" multiple style="position:absolute;left:-9999px;top:0;width:1px;height:1px">
@@ -99,7 +117,10 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
   function $(id) { return document.getElementById(id); }
 
   var peersEl = $("peers"), transfersEl = $("transfers"), nameEl = $("name"),
-      fileEl = $("file"), noteEl = $("note"), roomEl = $("room"), netLabelEl = $("netlabel");
+      fileEl = $("file"), noteEl = $("note"), roomEl = $("room"), netLabelEl = $("netlabel"),
+      pairEl = $("pair"), pairBox = $("pairbox"), pairText = $("pairtext"), pairCodeEl = $("paircode"),
+      pairJoinEl = $("pairjoin"), pairCreateEl = $("paircreate"), pairCloseEl = $("pairclose"),
+      pairJoinRow = $("pairjoinrow");
 
   var RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
   var ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -110,6 +131,26 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
 
   var ws = null, peers = {}, conns = {}, pendingPeer = null, tries = 0, waiting = true;
   var netId = "", peerCount = 0, hintTimer = null, hintShown = false;
+  var PAIR_KEY = "share.pair", pairJustCreated = false;
+
+  function getPair() {
+    try { return localStorage.getItem(PAIR_KEY) || ""; } catch (e) { return ""; }
+  }
+  function setPair(v) {
+    try { if (v) localStorage.setItem(PAIR_KEY, v); else localStorage.removeItem(PAIR_KEY); } catch (e) {}
+  }
+  function normalizeCode(v) {
+    return String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+  }
+  function makeCode() {
+    var abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", out = "", a = null, i;
+    if (window.crypto && window.crypto.getRandomValues) {
+      a = new Uint8Array(8);
+      window.crypto.getRandomValues(a);
+    }
+    for (i = 0; i < 8; i++) out += abc.charAt((a ? a[i] : Math.floor(Math.random() * 256)) % abc.length);
+    return out;
+  }
 
   function note(text, bad) {
     noteEl.textContent = text || "";
@@ -201,20 +242,23 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
       hintShown = true;
       note(netId
         ? "No devices yet. This device's network ID is " + netId +
-          ". If the other device shows a different ID (hotspot, VPN, iCloud Private Relay), tap \"Not seeing each other?\" and enter the same code on both."
-        : "No devices yet. If your other device does not appear, tap \"Not seeing each other?\" and enter the same code on both.");
+          ". If the other device shows a different ID (hotspot, VPN, iCloud Private Relay), tap \"Pair a device\" once and they will find each other on any network."
+        : "No devices yet. If your other device does not appear, tap \"Pair a device\" once and they will find each other on any network.");
     }, 10000);
   }
 
   function loadNet() {
     var room = (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
+    var pair = getPair();
     if (room) netLabelEl.textContent = "room " + room.toUpperCase() + " \u00b7 ";
+    else if (pair) netLabelEl.textContent = "paired " + pair + " \u00b7 ";
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "/net" + (room ? "?r=" + room.toUpperCase() : ""), true);
+    xhr.open("GET", "/net" + (room ? "?r=" + room.toUpperCase() : pair ? "?p=" + pair : ""), true);
     xhr.onload = function () {
       try {
         var d = JSON.parse(xhr.responseText);
         if (d.room) netLabelEl.textContent = "room " + d.room + " \u00b7 ";
+        else if (d.pair) netLabelEl.textContent = "paired " + d.pair + " \u00b7 ";
         else if (d.net) {
           netId = d.net;
           netLabelEl.textContent = "network " + d.net + " \u00b7 ";
@@ -226,8 +270,10 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
 
   function connect() {
     var room = (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
+    var pair = room ? "" : getPair();
     var proto = location.protocol === "https:" ? "wss://" : "ws://";
-    ws = new WebSocket(proto + location.host + "/ws" + (room ? "?r=" + room.toUpperCase() : ""));
+    ws = new WebSocket(proto + location.host + "/ws" +
+      (room ? "?r=" + room.toUpperCase() : pair ? "?p=" + pair : ""));
     ws.onopen = function () {
       tries = 0;
       note("");
@@ -579,6 +625,66 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
     if (code === null) return;
     code = String(code).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
     location.search = code ? "?r=" + code : "";
+  };
+
+  pairEl.onclick = function (e) {
+    e.preventDefault();
+    showPair(getPair());
+  };
+
+  function showPair(pair) {
+    pairBox.style.display = "block";
+    if (pair) {
+      pairText.innerHTML = "Paired as <span class=\"paircode\">" + pair +
+        "</span><br>Devices with this code always find each other, whatever network they are on.";
+      pairJoinRow.style.display = "none";
+      pairCreateEl.textContent = "Unpair this device";
+      pairJustCreated = false;
+    } else {
+      pairText.textContent = "Pairing makes two devices find each other on any network - hotspot, VPN, or different WiFi. " +
+        "Enter a code shown by your other device, or create one here and type it there.";
+      pairJoinRow.style.display = "block";
+      pairCreateEl.textContent = "Create a code for this device";
+    }
+  }
+
+  pairCreateEl.onclick = function (e) {
+    e.preventDefault();
+    var pair = getPair();
+    if (pair && !pairJustCreated) {
+      if (confirm("Unpair " + pair + "? This device goes back to same-network discovery.")) {
+        setPair("");
+        location.reload();
+      }
+      return;
+    }
+    if (pairJustCreated) {
+      location.reload();
+      return;
+    }
+    pair = makeCode();
+    setPair(pair);
+    pairJustCreated = true;
+    pairText.innerHTML = "This device's pairing code:<br><span class=\"paircode\">" + pair +
+      "</span><br>On the other device open share.aziz.tools, tap \"Pair a device\", and enter this code. " +
+      "Then come back here and reconnect.";
+    pairJoinRow.style.display = "none";
+    pairCreateEl.textContent = "Reconnect now";
+  };
+
+  pairJoinEl.onclick = function () {
+    var code = normalizeCode(pairCodeEl.value);
+    if (code.length < 4) {
+      alert("Type the code shown on your other device.");
+      return;
+    }
+    setPair(code);
+    location.reload();
+  };
+
+  pairCloseEl.onclick = function (e) {
+    e.preventDefault();
+    pairBox.style.display = "none";
   };
 
   connect();

@@ -31,10 +31,18 @@ export default {
         .replace(/[^A-Z0-9]/g, "")
         .slice(0, 8);
 
+      // Paired devices share a secret code instead of a network, so they find
+      // each other on a hotspot, a VPN or different WiFi entirely.
+      const pair = (url.searchParams.get("p") || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 10);
+
       // Same network -> same public IP -> same room. No codes, no QR.
       const network = request.headers.get("CF-Connecting-IP") || "local";
 
-      return env.ROOMS.get(env.ROOMS.idFromName(room ? "r:" + room : "n:" + network)).fetch(request);
+      const key = room ? "r:" + room : pair ? "p:" + pair : "n:" + network;
+      return env.ROOMS.get(env.ROOMS.idFromName(key)).fetch(request);
     }
 
     // Tiny diagnostic: lets the page show which "network" it landed in, so two
@@ -44,9 +52,15 @@ export default {
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, "")
         .slice(0, 8);
+      const pair = (url.searchParams.get("p") || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 10);
       const body = room
-        ? { room: room, net: "" }
-        : { room: "", net: await networkLabel(request.headers.get("CF-Connecting-IP") || "local") };
+        ? { room: room, pair: "", net: "" }
+        : pair
+          ? { room: "", pair: pair, net: "" }
+          : { room: "", pair: "", net: await networkLabel(request.headers.get("CF-Connecting-IP") || "local") };
       return new Response(JSON.stringify(body), {
         headers: { "content-type": "application/json", "cache-control": "no-store" },
       });
