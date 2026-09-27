@@ -22,11 +22,14 @@
    so a browser that understands nothing still shows a readable link list.
    This file is 7-bit ASCII, so it cannot break on a wrong charset. */
 
-html { -webkit-text-size-adjust: 100%; }
+/* height:100% on html and body gives .page a definite height to work with,
+   which is what lets the footer sit at the bottom on tall screens. */
+html { height: 100%; -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
   padding: 0;
+  height: 100%;
   background-color: #0a0c12;
   background-image: -webkit-gradient(linear, left top, left bottom, from(#0d1119), to(#080a0f));
   background-image: -webkit-linear-gradient(top, #0d1119, #080a0f);
@@ -37,9 +40,14 @@ body {
 }
 
 .page {
+  position: relative;
   max-width: 940px;
+  min-height: 100%;
   margin: 0 auto;
-  padding: 22px 14px 18px 14px;
+  padding: 22px 14px 56px 14px;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 h1 {
@@ -182,7 +190,11 @@ h1 .tld { color: #5fd0e8; }
 .frame-soon .host { color: #6d7787; }
 
 .footer {
-  margin: 16px 0 0 0;
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 18px;
+  margin: 0;
   padding-top: 12px;
   border-top: 1px solid #1b2130;
   font-size: 11px;
@@ -196,7 +208,8 @@ h1 .tld { color: #5fd0e8; }
 }
 
 @media screen and (min-width: 760px) {
-  .page { padding: 40px 20px 24px 20px; }
+  .page { padding: 40px 20px 64px 20px; }
+  .footer { left: 20px; right: 20px; }
   .cell { width: 21.5%; }
   h1 { font-size: 34px; }
   .tagline { margin-bottom: 24px; }
