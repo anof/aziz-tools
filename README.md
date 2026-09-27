@@ -44,10 +44,21 @@ Copy the live tile block in `index.html` and change:
 - the SVG symbol inside `.tile__badge`
 - `.tile__name` and `.tile__host` text
 
-## Deploying with Cloudflare Pages (later)
+## Deploying with Cloudflare Pages
 
-1. Push this folder to a GitHub repo (for example `anof/aziz-tools`).
-2. In the Cloudflare dashboard: **Workers & Pages -> Create -> Pages -> Connect to Git**, pick the repo.
-3. Build settings: framework preset **None**, build command empty, output directory `/` (repo root).
-4. After the first deploy, open the project's **Custom domains** tab and add `aziz.tools` (and optionally `www.aziz.tools`).
-5. For the future tool, add a DNS record for `share` pointing at the tool's own Pages project, for example a `CNAME share -> <project>.pages.dev`.
+The repo holds both builds, so one setting picks the live site: the Pages
+**build output directory**.
+
+- `classic` -> the classic build is live at aziz.tools (maximum compatibility)
+- `/` -> the modern build is live at aziz.tools, with the classic one at aziz.tools/classic/
+
+Steps:
+
+1. Cloudflare dashboard: **Workers & Pages -> Create -> Pages -> Connect to Git**, pick `anof/aziz-tools`.
+2. Build settings: framework preset **None**, build command **empty**, build output directory **classic**.
+3. Deploy, then open **Custom domains -> Set up a custom domain -> aziz.tools**. The zone already uses Cloudflare nameservers, so it will provision automatically.
+4. For the future Share tool: give it its own Pages project, then add a proxied DNS record `CNAME share -> <project>.pages.dev`.
+
+Switching is one setting, nothing else breaks: with the output directory set
+to `/`, the modern page is live at the root and the classic one is still
+reachable at aziz.tools/classic/.
