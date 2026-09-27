@@ -104,15 +104,26 @@ How it works:
    never carries them. The receiver confirms each file, and both sides show
    progress, bytes and live speed.
 
+Pairing: a hotspot, VPN or iCloud Private Relay can give two devices different
+public IPs, so IP-based discovery cannot match them. "Pair a device" solves that
+permanently - one device creates an 8-character code, the other types it once,
+and both store it locally (`localStorage`, key `share.pair`). From then on they
+join a room derived from that code and find each other on any network. While a
+device is paired it only looks for paired devices; unpair to go back to
+same-network discovery. `?p=CODE` selects it explicitly.
+
 Local development and testing:
 
 ```sh
 npx wrangler dev -c share/wrangler.toml --port 8787
 node tools/e2e-share.mjs http://127.0.0.1:8787/
+node tools/pair-test.mjs http://127.0.0.1:8787/
 ```
 
 The end-to-end test opens two real browser peers, sends two files through the
-actual UI, and verifies the received bytes by SHA-256.
+actual UI, and verifies the received bytes by SHA-256. The pairing test uses two
+separate browser profiles so the two devices have independent storage, like two
+real phones.
 
 Deploy:
 

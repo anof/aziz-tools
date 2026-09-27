@@ -96,6 +96,12 @@ async function launch(port, label) {
 const ready = `!!(document.querySelector("#peers .peer") || /Looking for/.test((document.querySelector("#peers .waiting") || {}).textContent || ""))`;
 const peerCount = `document.querySelectorAll("#peers .peer").length`;
 const footer = `document.getElementById("netlabel").textContent`;
+const has = (id) => `!!document.getElementById("${id}")`;
+
+async function click(cdp, id, label) {
+  await waitFor(() => cdp.eval(has(id)), 20000, label + " to have #" + id);
+  return cdp.eval(`(function(){document.getElementById("${id}").click();return 1;})()`);
+}
 
 async function main() {
   const a = await launch(9336, "A");
@@ -106,19 +112,21 @@ async function main() {
     console.log("both devices connected, unpaired");
 
     // A creates a pairing code.
-    await a.cdp.eval(`(function(){document.getElementById("pair").click();document.getElementById("paircreate").click();return 1;})()`);
+    await click(a.cdp, "pair", "device A");
+    await click(a.cdp, "paircreate", "device A");
     const text = await a.cdp.eval(`document.getElementById("pairtext").textContent`);
     const code = (text.match(/[A-Z2-9]{8}/) || [])[0];
     if (!code) throw new Error("device A did not produce a pairing code: " + text);
     console.log("device A pairing code:", code);
 
     // B joins with that code.
-    await b.cdp.eval(`(function(){document.getElementById("pair").click();return 1;})()`);
+    await click(b.cdp, "pair", "device B");
+    await waitFor(() => b.cdp.eval(has("pairjoin")), 20000, "device B to have #pairjoin");
     await b.cdp.eval(`(function(){document.getElementById("paircode").value=${JSON.stringify(code)};document.getElementById("pairjoin").click();return 1;})()`);
 
     // A reconnects into the paired room.
     await sleep(1500);
-    await a.cdp.eval(`(function(){document.getElementById("paircreate").click();return 1;})()`);
+    await click(a.cdp, "paircreate", "device A (reconnect)");
 
     const footA = await waitFor(() => a.cdp.eval(footer).then((t) => (t.indexOf("paired") === 0 ? t : "")), 20000, "device A paired footer");
     const footB = await waitFor(() => b.cdp.eval(footer).then((t) => (t.indexOf("paired") === 0 ? t : "")), 20000, "device B paired footer");
