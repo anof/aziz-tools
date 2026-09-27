@@ -103,6 +103,9 @@ How it works:
 3. File bytes travel over a WebRTC data channel, device to device. Cloudflare
    never carries them. The receiver confirms each file, and both sides show
    progress, bytes and live speed.
+4. Text uses the same channel: paste into "Send text", tap a device, and it
+   appears on the other side with a Copy button (32,000 character limit, and
+   the same delivery confirmation as files).
 
 Hotspots, VPNs and iCloud Private Relay can give two devices different public
 IPs, so IP-based discovery cannot match them. In that case both devices tap
@@ -117,9 +120,10 @@ npx wrangler dev -c share/wrangler.toml --port 8787
 node tools/e2e-share.mjs http://127.0.0.1:8787/
 ```
 
-The end-to-end test opens two real browser peers, sends two files through the
-actual UI, verifies the received bytes by SHA-256, and reports which ICE path
-the file took along with how many bytes the signaling server carried.
+The end-to-end test opens two real browser peers, sends two files and a piece of
+text through the actual UI, verifies the received bytes by SHA-256, checks the
+text arrives unchanged (including unicode), and reports which ICE path the file
+took along with how many bytes the signaling server carried.
 
 Deploy:
 

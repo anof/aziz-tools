@@ -382,6 +382,24 @@ async function main() {
     const pathA = JSON.parse(await a.eval(ICE_REPORT, true));
     const pathB = JSON.parse(await b.eval(ICE_REPORT, true));
 
+    // Text sharing between the same two peers.
+    const TEXT = "hello from the test - unicode stays intact: \u00e9\u4e2d\u6587\u2713 " + Date.now();
+    await a.eval(`(function(){document.getElementById("text").value=${JSON.stringify(TEXT)};return 1;})()`);
+    const button = await a.eval(`
+      (function () {
+        var b = document.querySelectorAll("#sendrow button");
+        for (var i = 0; i < b.length; i++) {
+          if (b[i].textContent.indexOf("Test B") >= 0) { b[i].click(); return b[i].textContent; }
+        }
+        return "";
+      })()
+    `);
+    if (!button) throw new Error("no Send-to-Test-B button in the text row");
+    await waitFor(() => b.eval(`document.querySelectorAll("#transfers .cardtext").length === 1`), 30000, "tab B to receive the text");
+    const receivedText = await b.eval(`document.querySelector("#transfers .cardtext").textContent`);
+    const senderTextStat = await a.eval(`(function(){var s=document.querySelectorAll("#transfers .stat");return s.length?s[s.length-1].textContent:"";})()`);
+    const copyButton = await b.eval(`document.querySelector("#transfers .cardtext") && document.querySelector("#transfers button.save").textContent`);
+
     console.log("");
     console.log("sender progress:  ", JSON.parse(senderStats).join(" | "));
     console.log("receiver progress:", JSON.parse(receiverStats).join(" | "));
@@ -398,7 +416,11 @@ async function main() {
       : `no candidate pair observed; signaling: ${p.wsOut} B out / ${p.wsIn} B in`;
     console.log("path (sender):    " + describe(pathA));
     console.log("path (receiver):  " + describe(pathB));
+    console.log("text send:        " + JSON.stringify(button) + " -> " + (receivedText === TEXT ? "same text arrived" : "MISMATCH"));
+    console.log("text status:      " + senderTextStat + " | receiver button: " + copyButton);
     if (pathA.pair && pathA.pair.local === "relay") failures++;
+    if (receivedText !== TEXT) failures++;
+    if (!/delivered/.test(senderTextStat)) failures++;
     console.log("");
 
     for (let i = 0; i < FILES.length; i++) {
