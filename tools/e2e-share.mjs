@@ -131,9 +131,11 @@ const injectScript = `
     if (nm && nm.textContent === "Test B") target = tiles[t];
   }
   if (!target) return "Test B not found among " + tiles.length + " peer tiles";
-  /* Tap the device first (this clears the input, as it does for a real user),
-     then hand the app the chosen files. */
-  target.click();
+  /* Tap "Files" on the device first (this clears the input, as it does for a
+     real user), then hand the app the chosen files. */
+  var fileButton = target.querySelector(".split button.files");
+  if (!fileButton) return "no file button on the target device";
+  fileButton.click();
   var dt = new DataTransfer();
   for (var i = 0; i < spec.length; i++) {
     var f = spec[i];
@@ -354,11 +356,17 @@ async function main() {
     const injectedResult = await a.eval(injectScript);
     console.log("send: ", injectedResult);
 
-    await waitFor(
-      () => b.eval(`document.querySelectorAll(".save").length === ${FILES.length}`),
-      90000,
-      "tab B to receive " + FILES.length + " files"
-    );
+    try {
+      await waitFor(
+        () => b.eval(`document.querySelectorAll(".save").length === ${FILES.length}`),
+        60000,
+        "tab B to receive " + FILES.length + " files"
+      );
+    } catch (e) {
+      const stateA = await a.eval(`JSON.stringify({note: document.getElementById("note").textContent, stats: Array.prototype.map.call(document.querySelectorAll("#transfers .stat"), function(s){return s.textContent;})})`);
+      const stateB = await b.eval(`JSON.stringify({note: document.getElementById("note").textContent, cards: document.querySelectorAll("#transfers .card").length})`);
+      throw new Error(e.message + " | sender: " + stateA + " | receiver: " + stateB);
+    }
     const elapsedMs = Date.now() - startedAt;
     let failures = 0;
 
@@ -387,9 +395,12 @@ async function main() {
     await a.eval(`(function(){document.getElementById("text").value=${JSON.stringify(TEXT)};return 1;})()`);
     const button = await a.eval(`
       (function () {
-        var b = document.querySelectorAll("#sendrow button");
-        for (var i = 0; i < b.length; i++) {
-          if (b[i].textContent.indexOf("Test B") >= 0) { b[i].click(); return b[i].textContent; }
+        var tiles = document.querySelectorAll("#peers .peer");
+        for (var i = 0; i < tiles.length; i++) {
+          var nm = tiles[i].querySelector(".pname");
+          if (!nm || nm.textContent !== "Test B") continue;
+          var textButton = tiles[i].querySelector(".split button.text");
+          if (textButton) { textButton.click(); return "Text on " + nm.textContent; }
         }
         return "";
       })()

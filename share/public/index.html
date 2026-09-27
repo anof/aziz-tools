@@ -31,25 +31,31 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
   -webkit-border-radius: 8px; -moz-border-radius: 8px; border-radius: 8px;
   -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
 .peers { margin: 0; padding: 0; font-size: 0; }
-.peer { display: inline-block; width: 46.5%; margin: 0 1.5% 1.5% 0; padding: 12px; vertical-align: top;
-  cursor: pointer; font-size: 14px; background-color: #12161f; border: 1px solid #232a38;
+.peer { display: block; width: 100%; margin: 0 0 10px 0; padding: 12px;
+  font-size: 14px; background-color: #12161f; border: 1px solid #232a38;
   -webkit-border-radius: 12px; -moz-border-radius: 12px; border-radius: 12px;
-  -webkit-tap-highlight-color: rgba(95,208,232,0.18);
   -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
-.peer:hover { background-color: #171d29; border-color: #33405a; }
-.peer:active { background-color: #1d2432; }
+.peer:hover { border-color: #33405a; }
 .pname { display: block; font-weight: bold; color: #f2f5fa; word-wrap: break-word; }
-.phint { display: block; margin-top: 3px; font-size: 11px; color: #7f8a9c; }
+.phint { display: block; margin-top: 2px; font-size: 11px; color: #7f8a9c; }
+/* One device, two huge halves: the whole card is the tap target. */
+.split { margin-top: 10px; }
+.split:after { content: ""; display: table; clear: both; }
+.split button { float: left; width: 50%; min-height: 96px; padding: 12px; font-size: 16px; font-weight: bold;
+  font-family: inherit; text-align: center; cursor: pointer; color: #eef1f6; background-color: #1a2130;
+  border: 1px solid #2c3648; -webkit-tap-highlight-color: rgba(95,208,232,0.18);
+  -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
+.split button.files { color: #06222b; background-color: #5fd0e8; border-color: #5fd0e8;
+  -webkit-border-radius: 12px 0 0 12px; border-radius: 12px 0 0 12px; }
+.split button.text { -webkit-border-radius: 0 12px 12px 0; border-radius: 0 12px 12px 0; }
+.split button:active { opacity: 0.82; }
+.split .glyph { display: block; font-size: 24px; margin-bottom: 6px; }
 .waiting { display: block; color: #6d7787; font-size: 13px; line-height: 1.5; }
 textarea { width: 100%; max-width: 100%; padding: 10px 11px; font-size: 15px; font-family: inherit; line-height: 1.45;
   color: #eef1f6; background-color: #12161f; border: 1px solid #232a38; resize: vertical;
   -webkit-border-radius: 10px; -moz-border-radius: 10px; border-radius: 10px;
   -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
 textarea:focus { outline: none; border-color: #33405a; }
-.sendrow { margin: 8px 0 0 0; font-size: 0; }
-.sendrow button { margin: 0 6px 6px 0; padding: 9px 13px; font-size: 13px; font-weight: bold; font-family: inherit;
-  color: #06222b; background-color: #5fd0e8; border: 0; cursor: pointer;
-  -webkit-border-radius: 9px; border-radius: 9px; }
 .card { margin: 0 0 10px 0; padding: 11px 12px; background-color: #12161f; border: 1px solid #232a38;
   -webkit-border-radius: 12px; -moz-border-radius: 12px; border-radius: 12px; }
 .cardtop { margin-bottom: 8px; }
@@ -69,10 +75,9 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
 .foot { position: absolute; left: 14px; right: 14px; bottom: 16px; margin: 0; padding-top: 12px;
   border-top: 1px solid #1b2130; font-size: 11px; color: #6d7787; }
 @media screen and (min-width: 480px) {
-  .peer { width: 29.5%; }
+  .split button { min-height: 104px; }
 }
 @media screen and (min-width: 760px) {
-  .peer { width: 21.5%; }
   h1 { font-size: 26px; }
 }
 </style>
@@ -91,9 +96,8 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   <div class="h2">Devices nearby</div>
   <div id="peers" class="peers"><span class="waiting">Connecting&hellip;</span></div>
 
-  <div class="h2">Send text</div>
-  <textarea id="text" rows="3" autocomplete="off" spellcheck="false" placeholder="Paste or type text, then tap a device below"></textarea>
-  <div id="sendrow" class="sendrow"><span class="waiting">Looking for devices&hellip;</span></div>
+  <div class="h2">Text to send</div>
+  <textarea id="text" rows="2" autocomplete="off" spellcheck="false" placeholder="Paste or type text, then tap Text on a device"></textarea>
 
   <div class="h2">Transfers</div>
   <div id="transfers" class="transfers"><span class="waiting">Nothing yet. Tap a device to send files.</span></div>
@@ -116,7 +120,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
 
   var peersEl = $("peers"), transfersEl = $("transfers"), nameEl = $("name"),
       fileEl = $("file"), noteEl = $("note"), roomEl = $("room"), netLabelEl = $("netlabel"),
-      textEl = $("text"), sendRowEl = $("sendrow");
+      textEl = $("text");
 
   var RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
   var ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -302,7 +306,6 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
       w.className = "waiting";
       w.textContent = "Looking for devices\u2026 open this page on your other device on the same WiFi.";
       peersEl.appendChild(w);
-      renderSendRow(ids);
       return;
     }
     for (var i = 0; i < ids.length; i++) {
@@ -310,51 +313,47 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
         var p = peers[id];
         var tile = document.createElement("div");
         tile.className = "peer";
-        tile.setAttribute("role", "button");
-        tile.setAttribute("tabindex", "0");
         var nm = document.createElement("span");
         nm.className = "pname";
         nm.textContent = p.name || "Unnamed device";
-        var hint = document.createElement("span");
-        hint.className = "phint";
-        hint.textContent = "Tap to send files";
-        tile.appendChild(nm);
-        tile.appendChild(hint);
-        tile.onclick = function () {
+        var sub = document.createElement("span");
+        sub.className = "phint";
+        sub.textContent = "Tap a side to send";
+        var actions = document.createElement("div");
+        actions.className = "split";
+        var filesBtn = document.createElement("button");
+        filesBtn.type = "button";
+        filesBtn.className = "files";
+        filesBtn.innerHTML = "<span class='glyph'>&#128206;</span>Files";
+        filesBtn.title = "Send files to this device";
+        filesBtn.onclick = function () {
           pendingPeer = id;
           fileEl.value = "";
           fileEl.click();
         };
+        var textBtn = document.createElement("button");
+        textBtn.type = "button";
+        textBtn.className = "text";
+        textBtn.innerHTML = "<span class='glyph'>&#9998;</span>Text";
+        textBtn.title = "Send the text in the box to this device";
+        textBtn.onclick = function () { sendTypedText(id); };
+        actions.appendChild(filesBtn);
+        actions.appendChild(textBtn);
+        tile.appendChild(nm);
+        tile.appendChild(sub);
+        tile.appendChild(actions);
         peersEl.appendChild(tile);
-      })(ids[i]);
-    }
-    renderSendRow(ids);
-  }
-
-  function renderSendRow(ids) {
-    sendRowEl.innerHTML = "";
-    if (!ids.length) {
-      var w = document.createElement("span");
-      w.className = "waiting";
-      w.textContent = "Nobody to send to yet - text goes as soon as a device appears.";
-      sendRowEl.appendChild(w);
-      return;
-    }
-    for (var i = 0; i < ids.length; i++) {
-      (function (id) {
-        var p = peers[id];
-        var b = document.createElement("button");
-        b.type = "button";
-        b.textContent = "Send to " + (p.name || "Unnamed device");
-        b.onclick = function () { sendTypedText(id); };
-        sendRowEl.appendChild(b);
       })(ids[i]);
     }
   }
 
   function sendTypedText(peerId) {
     var text = textEl.value;
-    if (!text) { note("Type or paste some text first.", true); return; }
+    if (!text) {
+      note("Paste or type the text first, then tap Text on a device.", true);
+      try { textEl.focus(); } catch (e) {}
+      return;
+    }
     if (text.length > 32000) { note("That text is too long - 32,000 characters is the limit.", true); return; }
     note("");
     textEl.value = "";
@@ -384,14 +383,20 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
 
   function onSignal(from, data) {
     var c = conns[from];
-    if (!c) {
+    /* Every transfer starts with a fresh offer, so an offer always means a new
+       connection. Reusing the previous one breaks back-to-back sends (a file
+       then text) depending on when the old channel's close event lands. */
+    if (!c || (data.sdp && data.sdp.type === "offer")) {
+      if (c) {
+        try { c.pc.close(); } catch (e) {}
+      }
       var pc = new RTC(ICE);
       c = conns[from] = { pc: pc, queue: [] };
       pc.onicecandidate = function (e) {
         if (e.candidate) send({ t: "signal", to: from, data: { c: e.candidate } });
       };
       pc.ondatachannel = function (e) {
-        receive(from, e.channel);
+        receive(from, e.channel, pc);
       };
     }
     if (data.sdp) {
@@ -476,7 +481,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
         clearTimeout(connectTimer);
         setTimeout(function () {
           try { dc.close(); pc.close(); } catch (e) {}
-          delete conns[peerId];
+          if (conns[peerId] && conns[peerId].pc === pc) delete conns[peerId];
         }, 300);
       }
     };
@@ -659,7 +664,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
 
   /* ---------- receiving ---------- */
 
-  function receive(from, dc) {
+  function receive(from, dc, pc) {
     dc.binaryType = "arraybuffer";
     var file = null;
     var seq = 0;
@@ -713,7 +718,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
     }
 
     dc.onclose = function () {
-      delete conns[from];
+      if (conns[from] && conns[from].pc === pc) delete conns[from];
     };
   }
 
