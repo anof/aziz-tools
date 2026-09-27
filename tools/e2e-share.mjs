@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const TARGET = process.argv[2] || "http://127.0.0.1:8787/";
+const WINDOW = process.argv[3] || "1000,800";
 const PORT = 9333;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
@@ -123,11 +124,16 @@ const injectScript = `
 (function () {
   var spec = ${injected};
   var input = document.getElementById("file");
-  var peers = document.querySelectorAll("#peers .peer");
-  if (!peers.length) return "no peer";
+  var tiles = document.querySelectorAll("#peers .peer");
+  var target = null;
+  for (var t = 0; t < tiles.length; t++) {
+    var nm = tiles[t].querySelector(".pname");
+    if (nm && nm.textContent === "Test B") target = tiles[t];
+  }
+  if (!target) return "Test B not found among " + tiles.length + " peer tiles";
   /* Tap the device first (this clears the input, as it does for a real user),
      then hand the app the chosen files. */
-  peers[0].click();
+  target.click();
   var dt = new DataTransfer();
   for (var i = 0; i < spec.length; i++) {
     var f = spec[i];
@@ -138,6 +144,16 @@ const injectScript = `
   input.files = dt.files;
   input.dispatchEvent(new Event("change", { bubbles: true }));
   return "sent " + spec.length + " files";
+})()
+`;
+
+const peerNamed = (wanted) => `
+(function () {
+  var names = document.querySelectorAll("#peers .peer .pname");
+  for (var i = 0; i < names.length; i++) {
+    if (names[i].textContent === ${JSON.stringify(wanted)}) return ${JSON.stringify(wanted)};
+  }
+  return "";
 })()
 `;
 
@@ -220,7 +236,7 @@ async function main() {
       "--no-default-browser-check",
       `--remote-debugging-port=${PORT}`,
       `--user-data-dir=${profile}`,
-      "--window-size=1000,800",
+      `--window-size=${WINDOW}`,
       "about:blank",
     ],
     { stdio: "ignore" }
@@ -245,13 +261,17 @@ async function main() {
       a.send("Page.addScriptToEvaluateOnNewDocument", { source: INSTRUMENT }),
       b.send("Page.addScriptToEvaluateOnNewDocument", { source: INSTRUMENT }),
     ]);
-    await Promise.all([a.send("Page.navigate", { url: TARGET }), b.send("Page.navigate", { url: TARGET })]);
+    // A private room keeps the test isolated from real devices that may be
+    // sitting in the default network room.
+    const room = "e2e" + Math.random().toString(36).slice(2, 8).toUpperCase();
+    const url = TARGET + (TARGET.indexOf("?") >= 0 ? "&" : "?") + "r=" + room;
+    await Promise.all([a.send("Page.navigate", { url: url }), b.send("Page.navigate", { url: url })]);
 
-    console.log("target:", TARGET);
+    console.log("target:", url);
 
     // Each page must be past "Connecting..." - either it shows the waiting
     // hint (no peers yet) or it already lists the other tab.
-    const ready = `!!(document.querySelector("#peers .peer") || document.querySelector("#peers .waiting"))`;
+    const ready = `!!(document.querySelector("#peers .peer") || /Looking for/.test((document.querySelector("#peers .waiting") || {}).textContent || ""))`;
     await waitFor(() => a.eval(ready), 20000, "tab A websocket connect");
     await waitFor(() => b.eval(ready), 20000, "tab B websocket connect");
     console.log("signaling: both tabs connected to /ws");
@@ -261,14 +281,14 @@ async function main() {
     await b.eval(`(function(){var n=document.getElementById("name");n.value="Test B";n.dispatchEvent(new Event("change"));return n.value;})()`);
 
     const peerSeen = await waitFor(
-      () => a.eval(`(function(){var p=document.querySelector("#peers .peer .pname");return p&&p.textContent==="Test B"?"Test B":"";})()`),
+      () => a.eval(peerNamed("Test B")),
       15000,
       "tab A to discover tab B"
     );
     console.log("discovery: tab A sees ->", peerSeen);
 
     await waitFor(
-      () => b.eval(`(function(){var p=document.querySelector("#peers .peer .pname");return p&&p.textContent==="Test A"?"Test A":"";})()`),
+      () => b.eval(peerNamed("Test A")),
       15000,
       "tab B to discover tab A"
     );
@@ -285,18 +305,39 @@ async function main() {
       "tab B to receive " + FILES.length + " files"
     );
     const elapsedMs = Date.now() - startedAt;
+    let failures = 0;
 
     const received = JSON.parse(await b.eval(readSaves, true));
     const senderStats = await a.eval(`(function(){var s=document.querySelectorAll("#transfers .stat");var o=[];for(var i=0;i<s.length;i++)o.push(s[i].textContent);return JSON.stringify(o);})()`);
     const receiverStats = await b.eval(`(function(){var s=document.querySelectorAll("#transfers .stat");var o=[];for(var i=0;i<s.length;i++)o.push(s[i].textContent);return JSON.stringify(o);})()`);
+    const layout = JSON.parse(
+      await b.eval(`(function(){
+        var cards = document.querySelectorAll("#transfers .card");
+        var last = cards[cards.length - 1];
+        var foot = document.querySelector(".foot");
+        var page = document.querySelector(".page");
+        return JSON.stringify({
+          contentEnd: Math.round(last.getBoundingClientRect().bottom),
+          footerTop: Math.round(foot.getBoundingClientRect().top),
+          pageHeight: page.offsetHeight,
+          viewport: window.innerHeight
+        });
+      })()`)
+    );
 
     console.log("");
     console.log("sender progress:  ", JSON.parse(senderStats).join(" | "));
     console.log("receiver progress:", JSON.parse(receiverStats).join(" | "));
     console.log("wall clock:        " + elapsedMs + " ms for " + FILES.reduce((n, f) => n + f.size, 0) + " bytes");
+    console.log(
+      "layout:            content ends at " + layout.contentEnd +
+        "px, footer starts at " + layout.footerTop +
+        "px, page " + layout.pageHeight + "px in a " + layout.viewport + "px viewport -> " +
+        (layout.footerTop >= layout.contentEnd ? "no overlap" : "OVERLAP")
+    );
+    if (layout.footerTop < layout.contentEnd) failures++;
     console.log("");
 
-    let failures = 0;
     for (let i = 0; i < FILES.length; i++) {
       const expected = bytesFor(FILES[i].size, FILES[i].seed);
       const want = { name: FILES[i].name, size: expected.length, sha: sha256(expected) };
