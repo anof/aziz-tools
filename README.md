@@ -1,12 +1,30 @@
 # aziz.tools
 
-Static landing page for aziz.tools. Pure HTML + CSS, no JavaScript, no build step.
+Static landing page for aziz.tools. Pure HTML + CSS, no JavaScript, no build
+step. Two builds of the same page live here:
 
-## Files
+| Build | Entry point | Look | Compatibility |
+| --- | --- | --- | --- |
+| Modern | `index.html` + `styles.css` | Gradient glow, glass tiles, dark/light mode | Any browser from ~2019 on |
+| Classic | `classic/index.html` | Flat squares, same layout | Android 2.x/4.x stock browsers, old iOS Safari, Opera Mini, IE8+ |
+
+### Modern build files
 
 - `index.html` - the page and its inline SVG icons
 - `styles.css` - layout, tiles, dark/light theme, responsive rules
 - `favicon.svg` - browser tab icon
+
+### Classic build
+
+`classic/index.html` is one self-contained file: no JavaScript, no images, no
+SVG, no web fonts, no external requests, and the source is 7-bit ASCII so a
+wrong charset cannot break it. Icons are plain text characters. The layout is
+CSS 2.1 (inline-block cells, percentage widths, the padding-bottom square
+trick); every CSS3 touch is prefix-duplicated and safe to ignore, so a browser
+that understands nothing still shows a readable, tappable link list.
+
+If a browser is too old for media queries it keeps the two-column layout, and
+if it has no CSS at all the page is still a usable list of links.
 
 ## Preview locally
 
@@ -15,7 +33,8 @@ cd ~/aziz.tools
 python3 -m http.server 4321
 ```
 
-Then open <http://localhost:4321>.
+- Modern: <http://localhost:4321>
+- Classic: <http://localhost:4321/classic/>
 
 ## Adding a new tool
 

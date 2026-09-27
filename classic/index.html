@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="MobileOptimized" content="width">
+<meta name="HandheldFriendly" content="true">
+<title>aziz.tools</title>
+<meta name="description" content="Small tools, one place.">
+<style type="text/css">
+/* aziz.tools - classic build.
+
+   Goal: render on anything, including Android 2.x/4.x stock browsers, old
+   iOS Safari, Opera Mini/Mobile and ancient desktop browsers.
+
+   Deliberately absent: JavaScript, images, SVG, web fonts, external files,
+   CSS grid, flexbox, rem, vw/vh, calc(), clamp(), CSS variables,
+   aspect-ratio, backdrop-filter, and transparent-color text tricks.
+
+   Layout is CSS 2.1 (inline-block + percentage widths + the padding-bottom
+   square trick). Everything CSS3 is prefix-duplicated and safe to ignore,
+   so a browser that understands nothing still shows a readable link list.
+   This file is 7-bit ASCII, so it cannot break on a wrong charset. */
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0a0c12;
+  background-image: -webkit-gradient(linear, left top, left bottom, from(#0d1119), to(#080a0f));
+  background-image: -webkit-linear-gradient(top, #0d1119, #080a0f);
+  background-image: linear-gradient(to bottom, #0d1119, #080a0f);
+  color: #eef1f6;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15px;
+}
+
+.page {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 22px 14px 18px 14px;
+}
+
+h1 {
+  margin: 0;
+  padding: 0;
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: bold;
+  letter-spacing: -1px;
+  color: #ffffff;
+}
+
+h1 .dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 7px;
+  background-color: #5fd0e8;
+  -webkit-border-radius: 6px;
+  -moz-border-radius: 6px;
+  border-radius: 6px;
+}
+
+h1 .tld { color: #5fd0e8; }
+
+.tagline {
+  margin: 7px 0 20px 0;
+  color: #98a2b3;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/* Tile grid: percentage widths + inline-block. Cells are written with no
+   whitespace between them in the markup, and font-size:0 removes any inline
+   gap, so rows never overflow their container. */
+.grid {
+  margin: 0;
+  padding: 0;
+  font-size: 0;
+}
+
+.cell {
+  display: inline-block;
+  width: 46.5%;
+  padding: 1.5%;
+  font-size: 15px;
+  vertical-align: top;
+}
+
+/* padding-bottom:100% makes a square from the cell width, on any browser. */
+.frame {
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%;
+  background-color: #12161f;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #232a38;
+  -webkit-border-radius: 14px;
+  -moz-border-radius: 14px;
+  border-radius: 14px;
+}
+
+.tile {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  text-decoration: none;
+  color: #eef1f6;
+  -webkit-border-radius: 13px;
+  -moz-border-radius: 13px;
+  border-radius: 13px;
+  -webkit-tap-highlight-color: rgba(95,208,232,0.18);
+}
+
+.tile:hover { background-color: #171d29; }
+.tile:active { background-color: #1d2432; }
+
+.badge {
+  position: absolute;
+  top: 11%;
+  left: 11%;
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 22px;
+  font-weight: bold;
+  text-align: center;
+  color: #cfe9f2;
+  background-color: #1a2130;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #2c3648;
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  border-radius: 10px;
+}
+
+.label {
+  position: absolute;
+  left: 11%;
+  right: 8%;
+  bottom: 9%;
+}
+
+.name {
+  display: block;
+  font-size: 15px;
+  font-weight: bold;
+  color: #f2f5fa;
+}
+
+.host {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: #7f8a9c;
+  word-wrap: break-word;
+}
+
+/* Placeholder tiles: flat and quiet, no opacity tricks needed. */
+.frame-soon {
+  background-color: transparent;
+  border-style: dashed;
+  border-color: #2a3140;
+}
+
+.frame-soon .badge {
+  background-color: transparent;
+  border-style: dashed;
+  border-color: #2a3140;
+  color: #7f8a9c;
+}
+
+.frame-soon .name { color: #a9b3c2; }
+.frame-soon .host { color: #6d7787; }
+
+.footer {
+  margin: 16px 0 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #1b2130;
+  font-size: 11px;
+  color: #6d7787;
+}
+
+/* Wider screens get more columns. A browser too old for media queries simply
+   keeps the two-column layout, which still works everywhere. */
+@media screen and (min-width: 480px) {
+  .cell { width: 29.5%; }
+}
+
+@media screen and (min-width: 760px) {
+  .page { padding: 40px 20px 24px 20px; }
+  .cell { width: 21.5%; }
+  h1 { font-size: 34px; }
+  .tagline { margin-bottom: 24px; }
+  .badge { width: 46px; height: 46px; line-height: 46px; font-size: 25px; }
+  .name { font-size: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1><span class="dot"></span>aziz<span class="tld">.tools</span></h1>
+  <p class="tagline">Small tools. One place. Tap one to open it.</p>
+
+  <div class="grid"><div class="cell"><div class="frame"><a class="tile" href="https://share.aziz.tools"><span class="badge">&#187;</span><span class="label"><span class="name">Share</span><span class="host">share.aziz.tools</span></span></a></div></div><div class="cell"><div class="frame frame-soon"><span class="badge">+</span><span class="label"><span class="name">Next tool</span><span class="host">Coming soon</span></span></div></div><div class="cell"><div class="frame frame-soon"><span class="badge">+</span><span class="label"><span class="name">Next tool</span><span class="host">Coming soon</span></span></div></div></div>
+
+  <p class="footer">&copy; 2026 aziz.tools</p>
+
+</div>
+</body>
+</html>
