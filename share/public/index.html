@@ -132,6 +132,39 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   var CHUNK_BIG = 65536;
   var SLICE = 4194304;      /* read this much from disk, then push it out */
   var HIGH = 4194304;       /* pause while this much is still buffered */
+  var HIGH_SAFARI = 262144; /* WebKit dislikes deep buffers */
+
+  function isSafari() {
+    var ua = navigator.userAgent || "";
+    return /Safari/.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|EdgiOS|Android/.test(ua);
+  }
+
+  /* Phones suspend background tabs mid-transfer, which looks exactly like a
+     stall. Hold a screen wake lock while anything is moving. */
+  var wakeLock = null, activeTransfers = 0;
+  function keepAwake(on) {
+    try {
+      if (on) {
+        if (!wakeLock && navigator.wakeLock && navigator.wakeLock.request) {
+          navigator.wakeLock.request("screen").then(function (lock) {
+            wakeLock = lock;
+            lock.onrelease = function () { wakeLock = null; };
+          }, function () {});
+        }
+      } else if (wakeLock) {
+        try { wakeLock.release(); } catch (e) {}
+        wakeLock = null;
+      }
+    } catch (e) {}
+  }
+  function transferStarted() {
+    activeTransfers++;
+    keepAwake(true);
+  }
+  function transferEnded() {
+    activeTransfers = Math.max(0, activeTransfers - 1);
+    if (!activeTransfers) keepAwake(false);
+  }
 
   var ws = null, peers = {}, conns = {}, pendingPeer = null, tries = 0, waiting = true;
   var netId = "", peerCount = 0, hintTimer = null, hintShown = false;
@@ -541,13 +574,37 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
 
   function sendFiles(peerId, files) {
     var peerName = (peers[peerId] && peers[peerId].name) || "device";
-    var index = 0, cards = [], okCount = 0, dc = null, chunk = CHUNK_SMALL, lowWater = false;
+    var index = 0, cards = [], okCount = 0, dc = null, chunk = CHUNK_SMALL, lowWater = false, high = HIGH;
+    var lastMove = Date.now(), watchdog = null, ended = false;
+
+    function endOnce() {
+      if (ended) return;
+      ended = true;
+      if (watchdog) { clearInterval(watchdog); watchdog = null; }
+      transferEnded();
+    }
 
     var ch = openChannel(peerId, peerName, function (channel) {
       dc = channel;
       lowWater = "bufferedAmountLowThreshold" in dc;   /* modern browsers */
-      chunk = lowWater ? CHUNK_BIG : CHUNK_SMALL;
-      if (lowWater) dc.bufferedAmountLowThreshold = HIGH / 2;
+      /* WebKit needs smaller messages and a much shallower buffer. */
+      if (isSafari()) {
+        chunk = CHUNK_SMALL;
+        high = HIGH_SAFARI;
+      } else {
+        chunk = lowWater ? CHUNK_BIG : CHUNK_SMALL;
+      }
+      if (lowWater) dc.bufferedAmountLowThreshold = high / 2;
+      transferStarted();
+      lastMove = Date.now();
+      watchdog = setInterval(function () {
+        if (!dc || dc.readyState !== "open") return;
+        if (Date.now() - lastMove > 40000) {
+          note("Transfer stalled. On iPhone keep Safari in front with the screen on, then try again.", true);
+          endOnce();
+          try { dc.close(); } catch (e) {}
+        }
+      }, 5000);
       nextFile();
     }, function (channel, ev) {
       /* The receiver confirms each file after the bytes are complete, so
@@ -559,7 +616,10 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
         okCount++;
         var card = cards[m.i];
         if (card) showProgress(card, card.size, card.size, card.t0, "delivered");
-        if (okCount >= files.length) ch.close();
+        if (okCount >= files.length) {
+          endOnce();
+          ch.close();
+        }
       }
     });
 
@@ -568,7 +628,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
         drain(function () {
           /* Wait for the receiver's ack. A 100 MB file can still be landing
              after our own buffer is empty, so this has to be patient. */
-          setTimeout(function () { ch.close(); }, 60000);
+          setTimeout(function () { endOnce(); ch.close(); }, 60000);
         });
         return;
       }
@@ -614,7 +674,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
           busy = true;
           while (pos < view.length) {
             if (dc.readyState !== "open") { busy = false; return; }
-            if (dc.bufferedAmount > HIGH) { busy = false; wait(); return; }
+            if (dc.bufferedAmount > high) { busy = false; wait(); return; }
             var end = Math.min(pos + chunk, view.length);
             try {
               dc.send(view.subarray(pos, end));
@@ -624,6 +684,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
               return;
             }
             var n = end - pos;
+            lastMove = Date.now();
             pos = end;
             offset += n;
             if (Date.now() - ui.last > 120) {
@@ -731,6 +792,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
 
   function receive(from, dc, pc) {
     dc.binaryType = "arraybuffer";
+    transferStarted();
     var file = null;
     var seq = 0;
     dc.onmessage = function (ev) {
@@ -786,6 +848,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
     }
 
     dc.onclose = function () {
+      transferEnded();
       if (conns[from] && conns[from].pc === pc) delete conns[from];
     };
   }
