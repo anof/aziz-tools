@@ -120,39 +120,6 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
     note("Transfer failed: " + ((e && e.message) || e || "unknown error"), true);
   }
 
-  /* What kinds of network paths did this browser find? host = same LAN,
-     srflx/prflx = punched through NAT, relay = a TURN server (we have none).
-     A failure with zero srflx candidates means the network is hiding its
-     address, which no amount of retrying can fix. */
-  function iceSummary(pc, cb) {
-    function count(stats) {
-      var host = 0, srflx = 0, relay = 0, other = 0;
-      stats.forEach(function (r) {
-        if (r.type !== "local-candidate" && r.type !== "remote-candidate") return;
-        if (r.candidateType === "host") host++;
-        else if (r.candidateType === "srflx" || r.candidateType === "prflx") srflx++;
-        else if (r.candidateType === "relay") relay++;
-        else other++;
-      });
-      cb("paths found: " + host + " local, " + srflx + " through-NAT, " + relay + " relay");
-    }
-    try {
-      var p = pc.getStats();
-      if (p && typeof p.then === "function") p.then(count);
-      else count(p);
-    } catch (e) {
-      cb("");
-    }
-  }
-
-  function directPathFailed(pc, peerName) {
-    iceSummary(pc, function (detail) {
-      note("Couldn't open a direct path to " + peerName + ". Usually one of the two networks " +
-        "uses a symmetric NAT or carrier-grade NAT, which refuses peer-to-peer traffic" +
-        (detail ? " (" + detail + ")" : "") + ". Try both devices on the same WiFi.", true);
-    });
-  }
-
   if (!window.WebSocket || !RTC || !window.FileReader || !window.Blob || !window.URL) {
     note("This browser can't do direct transfers - WebRTC is missing. Please open this page in Chrome, Firefox, Edge or Safari.", true);
     return;
@@ -437,13 +404,14 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
        instead of leaving the sender staring at a stuck transfer. */
     var connectTimer = setTimeout(function () {
       if (dc.readyState !== "open" && !closed) {
-        directPathFailed(pc, peerName);
+        note("Couldn't open a direct path to " + peerName +
+          ". Some networks block device-to-device connections - try both devices on the same WiFi.", true);
       }
     }, 20000);
     pc.onconnectionstatechange = function () {
       if (pc.connectionState === "failed") {
         clearTimeout(connectTimer);
-        directPathFailed(pc, peerName);
+        note("Couldn't open a direct path to " + peerName + ". The two networks are blocking peer-to-peer traffic.", true);
       }
     };
 
