@@ -392,7 +392,6 @@ async function main() {
 
     // Text sharing between the same two peers.
     const TEXT = "hello from the test - unicode stays intact: \u00e9\u4e2d\u6587\u2713 " + Date.now();
-    await a.eval(`(function(){document.getElementById("text").value=${JSON.stringify(TEXT)};return 1;})()`);
     const button = await a.eval(`
       (function () {
         var tiles = document.querySelectorAll("#peers .peer");
@@ -405,7 +404,14 @@ async function main() {
         return "";
       })()
     `);
-    if (!button) throw new Error("no Send-to-Test-B button in the text row");
+    if (!button) throw new Error("no Text half on the Test B card");
+    await waitFor(() => a.eval(`!!document.querySelector("#peers .compose textarea")`), 8000, "composer to open");
+    const composerFocused = await a.eval(`document.activeElement === document.querySelector("#peers .compose textarea")`);
+    await a.eval(`(function(){var ta=document.querySelector("#peers .compose textarea");ta.value=${JSON.stringify(TEXT)};return ta.value.length;})()`);
+    const composerShot = await a.send("Page.captureScreenshot", { format: "png" });
+    writeFileSync("/tmp/aziz-share-composer.png", Buffer.from(composerShot.data, "base64"));
+    await a.eval(`document.querySelector("#peers .compose button.send").click()`);
+    const composerClosed = await waitFor(() => a.eval(`!document.querySelector("#peers .compose")`), 5000, "composer to close after sending");
     await waitFor(() => b.eval(`document.querySelectorAll("#transfers .cardtext").length === 1`), 30000, "tab B to receive the text");
     const receivedText = await b.eval(`document.querySelector("#transfers .cardtext").textContent`);
     const senderTextStat = await a.eval(`(function(){var s=document.querySelectorAll("#transfers .stat");return s.length?s[s.length-1].textContent:"";})()`);
@@ -428,6 +434,7 @@ async function main() {
     console.log("path (sender):    " + describe(pathA));
     console.log("path (receiver):  " + describe(pathB));
     console.log("text send:        " + JSON.stringify(button) + " -> " + (receivedText === TEXT ? "same text arrived" : "MISMATCH"));
+    console.log("composer:         opened with the box focused=" + composerFocused + ", closed after Send=" + composerClosed);
     console.log("text status:      " + senderTextStat + " | receiver button: " + copyButton);
     if (pathA.pair && pathA.pair.local === "relay") failures++;
     if (receivedText !== TEXT) failures++;

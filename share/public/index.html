@@ -51,11 +51,19 @@ input[type=text] { width: 100%; max-width: 320px; padding: 9px 10px; font-size: 
 .split button:active { opacity: 0.82; }
 .split .glyph { display: block; font-size: 24px; margin-bottom: 6px; }
 .waiting { display: block; color: #6d7787; font-size: 13px; line-height: 1.5; }
-textarea { width: 100%; max-width: 100%; padding: 10px 11px; font-size: 15px; font-family: inherit; line-height: 1.45;
-  color: #eef1f6; background-color: #12161f; border: 1px solid #232a38; resize: vertical;
-  -webkit-border-radius: 10px; -moz-border-radius: 10px; border-radius: 10px;
+/* Composer that appears inside a device card when you tap Text */
+.compose { margin-top: 10px; }
+.compose textarea { width: 100%; max-width: 100%; min-height: 92px; padding: 12px; font-size: 16px; font-family: inherit;
+  line-height: 1.45; color: #eef1f6; background-color: #0f131b; border: 1px solid #2c3648; resize: vertical;
+  -webkit-border-radius: 12px; -moz-border-radius: 12px; border-radius: 12px;
   -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; }
-textarea:focus { outline: none; border-color: #33405a; }
+.compose textarea:focus { outline: none; border-color: #5fd0e8; }
+.compose button.send { display: block; width: 100%; min-height: 54px; margin-top: 8px; padding: 14px;
+  font-size: 17px; font-weight: bold; font-family: inherit; cursor: pointer; color: #06222b; background-color: #5fd0e8;
+  border: 0; -webkit-border-radius: 12px; border-radius: 12px; }
+.compose button.send:active { opacity: 0.85; }
+.compose button.cancel { display: block; width: 100%; min-height: 46px; margin-top: 6px; padding: 12px;
+  font-size: 15px; font-family: inherit; cursor: pointer; color: #98a2b3; background-color: transparent; border: 0; }
 .card { margin: 0 0 10px 0; padding: 11px 12px; background-color: #12161f; border: 1px solid #232a38;
   -webkit-border-radius: 12px; -moz-border-radius: 12px; border-radius: 12px; }
 .cardtop { margin-bottom: 8px; }
@@ -96,9 +104,6 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   <div class="h2">Devices nearby</div>
   <div id="peers" class="peers"><span class="waiting">Connecting&hellip;</span></div>
 
-  <div class="h2">Text to send</div>
-  <textarea id="text" rows="2" autocomplete="off" spellcheck="false" placeholder="Paste or type text, then tap Text on a device"></textarea>
-
   <div class="h2">Transfers</div>
   <div id="transfers" class="transfers"><span class="waiting">Nothing yet. Tap a device to send files.</span></div>
 
@@ -119,8 +124,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   function $(id) { return document.getElementById(id); }
 
   var peersEl = $("peers"), transfersEl = $("transfers"), nameEl = $("name"),
-      fileEl = $("file"), noteEl = $("note"), roomEl = $("room"), netLabelEl = $("netlabel"),
-      textEl = $("text");
+      fileEl = $("file"), noteEl = $("note"), roomEl = $("room"), netLabelEl = $("netlabel");
 
   var RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
   var ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -335,8 +339,8 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
         textBtn.type = "button";
         textBtn.className = "text";
         textBtn.innerHTML = "<span class='glyph'>&#9998;</span>Text";
-        textBtn.title = "Send the text in the box to this device";
-        textBtn.onclick = function () { sendTypedText(id); };
+        textBtn.title = "Write something to send to this device";
+        textBtn.onclick = function () { openComposer(id, tile, actions, p.name || "this device"); };
         actions.appendChild(filesBtn);
         actions.appendChild(textBtn);
         tile.appendChild(nm);
@@ -347,17 +351,65 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
     }
   }
 
-  function sendTypedText(peerId) {
-    var text = textEl.value;
-    if (!text) {
-      note("Paste or type the text first, then tap Text on a device.", true);
-      try { textEl.focus(); } catch (e) {}
-      return;
+  /* Tapping Text swaps the two halves for a composer, so the box you write in
+     belongs to the device you tapped. Send collapses it again. */
+  function openComposer(peerId, card, actions, peerName) {
+    if (card.querySelector(".compose")) return;   /* already open on this card */
+    closeComposers();
+    actions.style.display = "none";
+
+    var box = document.createElement("div");
+    box.className = "compose";
+    var ta = document.createElement("textarea");
+    ta.rows = 3;
+    ta.autocomplete = "off";
+    ta.spellcheck = false;
+    ta.placeholder = "Type or paste text for " + peerName;
+    var send = document.createElement("button");
+    send.type = "button";
+    send.className = "send";
+    send.textContent = "Send";
+    var cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "cancel";
+    cancel.textContent = "Cancel";
+
+    function shut() {
+      if (box.parentNode) box.parentNode.removeChild(box);
+      actions.style.display = "block";
     }
-    if (text.length > 32000) { note("That text is too long - 32,000 characters is the limit.", true); return; }
-    note("");
-    textEl.value = "";
-    sendText(peerId, text);
+    function fire() {
+      var text = ta.value;
+      if (!text) { try { ta.focus(); } catch (e) {} return; }
+      if (text.length > 32000) { note("That text is too long - 32,000 characters is the limit.", true); return; }
+      note("");
+      sendText(peerId, text);
+      shut();
+    }
+
+    send.onclick = fire;
+    cancel.onclick = shut;
+    ta.onkeydown = function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.keyCode === 13) { fire(); return false; }
+      if (e.keyCode === 27) { shut(); return false; }
+      return true;
+    };
+    box.appendChild(ta);
+    box.appendChild(send);
+    box.appendChild(cancel);
+    card.appendChild(box);
+    try { ta.focus(); } catch (e) {}
+  }
+
+  function closeComposers() {
+    var open = peersEl.querySelectorAll(".compose");
+    for (var i = 0; i < open.length; i++) {
+      var box = open[i];
+      var card = box.parentNode;
+      if (box.parentNode) box.parentNode.removeChild(box);
+      var acts = card.querySelector(".split");
+      if (acts) acts.style.display = "block";
+    }
   }
 
   /* ---------- WebRTC plumbing ---------- */
