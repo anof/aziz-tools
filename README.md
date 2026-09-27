@@ -38,27 +38,45 @@ python3 -m http.server 4321
 
 ## Adding a new tool
 
-Copy the live tile block in `index.html` and change:
+Copy the live tile block in `classic/index.html` (the deployed build) and in
+`index.html` (the modern build), then change:
 
 - `href` to the new subdomain, for example `https://files.aziz.tools`
-- the SVG symbol inside `.tile__badge`
-- `.tile__name` and `.tile__host` text
+- the badge contents: a text character in the classic build, the SVG symbol in the modern one
+- the name and host text in both
 
-## Deploying with Cloudflare Pages
+Then redeploy:
 
-The repo holds both builds, so one setting picks the live site: the Pages
-**build output directory**.
+```sh
+cd ~/aziz.tools && npx wrangler deploy
+```
 
-- `classic` -> the classic build is live at aziz.tools (maximum compatibility)
-- `/` -> the modern build is live at aziz.tools, with the classic one at aziz.tools/classic/
+## Deployment
 
-Steps:
+The site runs on a Cloudflare **Worker with static assets**, which serves the
+classic build and owns the `aziz.tools` hostname. All of it is declared in
+`wrangler.toml`:
 
-1. Cloudflare dashboard: **Workers & Pages -> Create -> Pages -> Connect to Git**, pick `anof/aziz-tools`.
-2. Build settings: framework preset **None**, build command **empty**, build output directory **classic**.
-3. Deploy, then open **Custom domains -> Set up a custom domain -> aziz.tools**. The zone already uses Cloudflare nameservers, so it will provision automatically.
-4. For the future Share tool: give it its own Pages project, then add a proxied DNS record `CNAME share -> <project>.pages.dev`.
+```toml
+name = "aziz-tools"
+routes = [{ pattern = "aziz.tools", custom_domain = true }]
+[assets]
+directory = "./classic"
+```
 
-Switching is one setting, nothing else breaks: with the output directory set
-to `/`, the modern page is live at the root and the classic one is still
-reachable at aziz.tools/classic/.
+- `npx wrangler deploy` - publish changes (also creates DNS + certificate for the hostname)
+- `npx wrangler login` - one-time auth on a new machine
+- `npx wrangler deployments list` - deployment history and rollback targets
+
+Why not Pages: attaching a custom domain to a Pages project is dashboard-only,
+while a Worker's `custom_domain` route is fully configurable from the CLI.
+The deploy output is plain static files either way.
+
+Later options:
+
+- Add `{ pattern = "www.aziz.tools", custom_domain = true }` to `routes` for www.
+- Give each future tool its own Worker and add its route here.
+- Auto-deploy on `git push`: connect Workers Builds in the dashboard, or add a
+  GitHub Actions workflow that runs `wrangler deploy` with a scoped API token.
+- To make the modern build live at the root, move it into a `modern/` folder
+  and point `assets.directory` at it.

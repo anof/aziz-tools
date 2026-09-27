@@ -1,0 +1,16 @@
+# Cloudflare Worker with static assets.
+#
+# It serves the classic build (./classic) and owns the aziz.tools hostname.
+# Deploy with:  npx wrangler deploy
+# The custom_domain route makes Cloudflare create the DNS record and
+# certificate for the hostname, so no DNS access or dashboard clicks needed.
+
+name = "aziz-tools"
+compatibility_date = "2026-09-26"
+
+routes = [
+  { pattern = "aziz.tools", custom_domain = true }
+]
+
+[assets]
+directory = "./classic"
