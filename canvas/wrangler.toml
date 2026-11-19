@@ -1,0 +1,13 @@
+# canvas.aziz.tools - infinite finger canvas, one static file.
+# No server-side code; the Worker only serves the page.
+
+name = "aziz-tools-canvas"
+compatibility_date = "2026-11-19"
+workers_dev = false
+
+routes = [
+  { pattern = "canvas.aziz.tools", custom_domain = true }
+]
+
+[assets]
+directory = "./public"

@@ -177,3 +177,42 @@ node tools/shade-test.mjs https://shade.aziz.tools/
 The test drives the real UI: it uses a simulated GPS fix, searches two real
 addresses, checks the verdict and the facts line, then saves a trip and reloads
 the page to confirm it comes back.
+
+## canvas.aziz.tools
+
+Infinite finger canvas, rebuilt from the supplied Expo project as one static
+page - no React Native, no Expo, no server.
+
+| File | What it is |
+| --- | --- |
+| `canvas/public/index.html` | The whole app: SVG canvas, touch handling, toolbar |
+| `canvas/wrangler.toml` | Worker + `canvas.aziz.tools` custom domain |
+
+Kept from the source: black canvas, `#00A8FF` strokes, 4px constant stroke
+width, 25px eraser, 0.1x-10x zoom, the eraser/clear toolbar, and unbounded
+(infinite) panning in every direction.
+
+What changed for fingers: the source's `PanResponder` only captured pinch state
+on the first press, so a second finger arriving mid-stroke never engaged pinch
+and could leave a partial stroke behind. This version tracks touches explicitly:
+
+- One finger draws (a tap leaves a dot).
+- Two fingers pan and pinch together, even when the second finger lands after
+  drawing has started; the partial stroke is discarded when that happens.
+- After a pinch, a leftover finger can't draw until every finger lifts.
+- `touch-action: none` plus prevented touch defaults stop Safari/Chrome from
+  scrolling or page-zooming under the canvas.
+- Mouse works on desktop: drag draws, wheel pans, ctrl/cmd+wheel zooms at the
+  pointer.
+
+Test and deploy:
+
+```sh
+npx wrangler dev -c canvas/wrangler.toml --port 8790
+node tools/canvas-test.mjs http://127.0.0.1:8790/
+npx wrangler deploy -c canvas/wrangler.toml
+```
+
+The test emulates a phone with CDP touch events: one-finger strokes, pinch,
+pan, a second finger mid-stroke, eraser, clear, and confirms the page never
+scrolls.
