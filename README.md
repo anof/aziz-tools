@@ -206,12 +206,6 @@ Features kept from the project:
 - **Mouse**: drag draws, plain wheel pans, Ctrl/Command + wheel zooms at the
   pointer. A native non-passive wheel listener prevents the browser itself
   from zooming.
-- **Trackpad mode** (desktop): click the touchpad button, then click the canvas
-  to place the pen. Move a finger on the physical trackpad to draw at that spot
-  without holding a button; Enter or a click lifts the pen, and Esc exits and
-  returns the mouse to normal behaviour. Browsers do not expose raw trackpad
-  coordinates, so this uses Pointer Lock plus relative mouse movement - the
-  closest web equivalent to Word's trackpad signature mode.
 - Page scrolling and browser pinch-zoom are disabled over the canvas.
 
 Build and deploy:
@@ -229,4 +223,4 @@ npx wrangler deploy -c canvas/wrangler.toml
 The test emulates a phone with CDP touch events and a desktop with mouse events:
 one-finger strokes, pinch past 10x and below 0.1x, pan, a second finger
 mid-stroke, touch eraser, session rename/new/switch/reload/delete, mouse draw,
-Ctrl-wheel zoom, wheel pan, and the full trackpad place/draw/lift/Esc flow.
+Ctrl-wheel zoom and wheel pan.
