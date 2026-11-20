@@ -104,8 +104,8 @@ How it works:
 3. File bytes prefer a direct WebRTC data channel. If the direct connection
    cannot open (for example a router with client isolation, which blocks
    device-to-device traffic), the transfer automatically switches to a relay
-   through the Durable Object after roughly 12 seconds. Relay chunks are
-   32 KB binary WebSocket frames over TLS: they are forwarded and never stored,
+   through the Durable Object after roughly 5 seconds. Relay chunks are
+   64 KB binary WebSocket frames over TLS: they are forwarded and never stored,
    but they do pass through Cloudflare's Worker. Direct transfers remain
    WebRTC/DTLS and never carry file bytes through the Worker.
    Sending is chunked at 64 KB with flow control: the sender pauses once 4 MB
@@ -113,18 +113,22 @@ How it works:
    safety net, and backs off if the channel reports a full buffer. Chunks are
    kept as Blob parts on the receiving side so large files can be paged out.
    Verified end to end with a 100 MB file (SHA-256 matched, local and live).
-   Relay is capped at 200 MB per file and observed at around 2.6 MB/s. The
+   Transfer cards appear immediately with a "connecting" status, so selecting a
+   file always shows feedback before ICE completes. Relay is capped at 200 MB
+   per file and measured at around 9 MB/s in testing. The
    sender's tab must stay open, and multi-gigabyte files depend on the receiving
    device's memory.
 4. Text uses the same channel: paste into "Send text", tap a device, and it
    appears on the other side with a Copy button (32,000 character limit, and
    the same delivery confirmation as files).
 
-The room control is a large card near the top of the page, not a footer link.
-Tap it to join with a code, create a new room, or leave the current one. Use a
-room when devices are on different networks (hotspot, VPN, iCloud Private
-Relay) or when a router isolates clients. The card shows `Room CODE` while
-connected; the footer still shows the network hash for diagnostics.
+The room control is a centered, full-width card near the top of the page, not
+a footer link. Tap it to enter the same code on both devices and join, or to
+leave the current room. There is one room action instead of separate
+join/create buttons. Use a room when devices are on different networks
+(hotspot, VPN, iCloud Private Relay) or when a router isolates clients. The
+card keeps the title `Room` stable and shows the active code underneath; the
+footer still shows the network hash for diagnostics.
 
 Same-WiFi caveat: many routers (especially guest networks) allow both devices
 online but block packets between them. That is what makes devices visible but

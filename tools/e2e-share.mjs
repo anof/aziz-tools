@@ -398,6 +398,8 @@ async function main() {
     const startedAt = Date.now();
     const injectedResult = await a.eval(injectScript);
     console.log("send: ", injectedResult);
+    const immediateCards = await a.eval(`document.querySelectorAll("#transfers .card").length`);
+    check(immediateCards >= FILES.length, "transfer cards appear immediately", immediateCards + " cards");
 
     try {
       await waitFor(
