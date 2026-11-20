@@ -83,6 +83,39 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   white-space: pre-wrap; word-wrap: break-word; }
 .note { min-height: 18px; margin: 14px 0 0 0; font-size: 12px; color: #7f8a9c; }
 .note.bad { color: #ffb4b4; }
+.roomcard { margin: 0 0 16px 0; }
+.roombtn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 12px 14px;
+  text-align: left; color: #eef1f6; background-color: #12161f; border: 1px solid #232a38;
+  -webkit-border-radius: 14px; border-radius: 14px; cursor: pointer; font-family: inherit;
+  -webkit-tap-highlight-color: rgba(95,208,232,0.18); }
+.roombtn:hover { background-color: #171d29; border-color: #33405a; }
+.roombtn.active { border-color: #5fd0e8; background-color: rgba(95,208,232,0.12); }
+.roomicon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px;
+  color: #5fd0e8; background-color: rgba(95,208,232,0.14); border: 1px solid rgba(95,208,232,0.3);
+  -webkit-border-radius: 12px; border-radius: 12px; }
+.roomicon svg { width: 20px; height: 20px; }
+.roomtext { display: block; min-width: 0; }
+.roomtitle { display: block; font-size: 15px; font-weight: bold; color: #f2f5fa; }
+.roomsub { display: block; margin-top: 2px; font-size: 11px; line-height: 1.35; color: #7f8a9c; }
+.sheetbackdrop { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 19; background: rgba(0,0,0,0.62); }
+.roomsheet { position: fixed; left: 50%; bottom: 0; z-index: 20; width: 100%; max-width: 680px;
+  -webkit-transform: translateX(-50%); transform: translateX(-50%);
+  padding: 18px 14px calc(18px + env(safe-area-inset-bottom, 0px)); background-color: #12161f;
+  border-top: 1px solid #2c3648; -webkit-border-radius: 20px 20px 0 0; border-radius: 20px 20px 0 0;
+  -webkit-box-sizing: border-box; box-sizing: border-box; }
+.roomsheet h2 { margin: 0 0 6px 0; font-size: 19px; color: #fff; }
+.roomhelp { margin: 0 0 12px 0; font-size: 12px; line-height: 1.5; color: #98a2b3; }
+.roomsheet label { display: block; margin-bottom: 5px; font-size: 11px; color: #7f8a9c; }
+.roominput { width: 100%; height: 52px; padding: 0 14px; margin: 0 0 10px 0; font-size: 20px; font-weight: bold;
+  letter-spacing: 3px; text-transform: uppercase; font-family: inherit; color: #eef1f6; background-color: #0a0c12;
+  border: 1px solid #2c3648; -webkit-border-radius: 12px; border-radius: 12px;
+  -webkit-box-sizing: border-box; box-sizing: border-box; }
+.roomprimary, .roomsecondary { display: block; width: 100%; min-height: 54px; margin-top: 8px; padding: 14px;
+  font-size: 16px; font-weight: bold; font-family: inherit; -webkit-border-radius: 12px; border-radius: 12px; cursor: pointer; }
+.roomprimary { color: #06222b; background-color: #5fd0e8; border: 0; }
+.roomsecondary { color: #cfe9f2; background-color: #1a2130; border: 1px solid #2c3648; }
+.roomcancel { display: block; width: 100%; min-height: 46px; margin-top: 6px; padding: 12px;
+  font-size: 14px; font-family: inherit; color: #98a2b3; background: transparent; border: 0; cursor: pointer; }
 .foot { position: absolute; left: 14px; right: 14px; bottom: 16px; margin: 0; padding-top: 12px;
   border-top: 1px solid #1b2130; font-size: 11px; color: #6d7787; }
 @media screen and (min-width: 480px) {
@@ -97,11 +130,28 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
 <div class="page">
 
   <h1><a href="https://aziz.tools">aziz.tools</a> <span class="slash">/</span> share</h1>
-  <p class="sub">Send files straight between devices on the same WiFi. Nothing is uploaded, nothing is stored.</p>
+  <p class="sub">Files go directly between devices when possible. If the network blocks that, they are relayed over TLS and never stored.</p>
 
   <div class="namerow">
     <label for="name">This device's name</label>
     <input id="name" type="text" maxlength="24" autocomplete="off" placeholder="e.g. Aziz's phone">
+  </div>
+
+  <div class="roomcard">
+    <button id="roombtn" class="roombtn" type="button" data-testid="room-button">
+      <span class="roomicon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8" cy="16" r="4"></circle>
+          <path d="M11 13 20 4"></path>
+          <path d="M17 7l2 2"></path>
+          <path d="M19 5l2 2"></path>
+        </svg>
+      </span>
+      <span class="roomtext">
+        <span class="roomtitle" id="roomtitle">Join a room</span>
+        <span class="roomsub" id="roomsub">Use a code across networks or when WiFi blocks direct transfer</span>
+      </span>
+    </button>
   </div>
 
   <div class="h2">Devices nearby</div>
@@ -111,9 +161,22 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   <div id="transfers" class="transfers"><span class="waiting">Nothing yet. Tap a device to send files.</span></div>
 
   <p id="note" class="note"></p>
-  <p class="foot"><span id="netlabel"></span><a href="#" id="room">Not seeing each other?</a> &middot; <a href="https://aziz.tools">aziz.tools</a></p>
+  <p class="foot"><span id="netlabel"></span><a href="https://aziz.tools">aziz.tools</a></p>
 
 </div>
+
+<div id="roombackdrop" class="sheetbackdrop" style="display:none"></div>
+<section id="roomsheet" class="roomsheet" style="display:none" role="dialog" aria-modal="true" aria-labelledby="roomsheettitle" data-testid="room-sheet">
+  <h2 id="roomsheettitle">Room code</h2>
+  <p class="roomhelp">Join the same room on both devices. This works across different networks and when WiFi blocks direct device-to-device traffic.</p>
+  <label for="roomcode">Room code</label>
+  <input id="roomcode" class="roominput" type="text" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="e.g. AZIZ12">
+  <button id="joinroom" class="roomprimary" type="button" data-testid="room-join">Join room</button>
+  <button id="createroom" class="roomsecondary" type="button" data-testid="room-create">Create a new room</button>
+  <button id="leaveroom" class="roomcancel" type="button" style="display:none">Leave current room</button>
+  <button id="closeroom" class="roomcancel" type="button">Cancel</button>
+</section>
+
 <input id="file" type="file" multiple style="position:absolute;left:-9999px;top:0;width:1px;height:1px">
 <noscript><p style="padding:0 14px;color:#ffb4b4">This page needs JavaScript, because the transfer runs in your browser.</p></noscript>
 <script type="text/javascript">
@@ -127,7 +190,11 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   function $(id) { return document.getElementById(id); }
 
   var peersEl = $("peers"), transfersEl = $("transfers"), nameEl = $("name"),
-      fileEl = $("file"), noteEl = $("note"), roomEl = $("room"), netLabelEl = $("netlabel");
+      fileEl = $("file"), noteEl = $("note"), netLabelEl = $("netlabel"),
+      roomBtn = $("roombtn"), roomTitle = $("roomtitle"), roomSub = $("roomsub"),
+      roomSheet = $("roomsheet"), roomBackdrop = $("roombackdrop"),
+      roomCodeEl = $("roomcode"), joinRoomEl = $("joinroom"), createRoomEl = $("createroom"),
+      leaveRoomEl = $("leaveroom"), closeRoomEl = $("closeroom");
 
   var RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
   var ICE = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -136,6 +203,9 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   var SLICE = 4194304;      /* read this much from disk, then push it out */
   var HIGH = 4194304;       /* pause while this much is still buffered */
   var HIGH_SAFARI = 262144; /* WebKit dislikes deep buffers */
+  var RELAY_MAX_FILE = 200 * 1024 * 1024;
+  var RELAY_CHUNK = 32768;
+  var forceRelay = /[?&]relay=1/.test(location.search);
 
   function isSafari() {
     var ua = navigator.userAgent || "";
@@ -171,6 +241,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
 
   var ws = null, peers = {}, conns = {}, pendingPeer = null, tries = 0, waiting = true;
   var netId = "", peerCount = 0, hintTimer = null, hintShown = false;
+  var relayOut = {}, relayIn = {}, relaySeq = 0;
 
   function note(text, bad) {
     noteEl.textContent = text || "";
@@ -262,20 +333,86 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
       hintShown = true;
       note(netId
         ? "No devices yet. This device's network ID is " + netId +
-          ". If the other device shows a different ID (hotspot, VPN, iCloud Private Relay), tap \"Not seeing each other?\" and enter the same code on both."
-        : "No devices yet. If your other device does not appear, tap \"Not seeing each other?\" and enter the same code on both.");
+          ". If the other device shows a different ID (hotspot, VPN, iCloud Private Relay), use the room button and enter the same code on both."
+        : "No devices yet. If your other device does not appear, use the room button and enter the same code on both.");
     }, 10000);
   }
 
+  function getRoom() {
+    return (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
+  }
+
+  function normalizeCode(value) {
+    return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  }
+
+  function makeRoomCode() {
+    var alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    var bytes = new Uint8Array ? new Uint8Array(6) : [];
+    var i, out = "";
+    if (window.crypto && window.crypto.getRandomValues && bytes.length) {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (i = 0; i < 6; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    for (i = 0; i < 6; i++) out += alphabet.charAt(bytes[i] % alphabet.length);
+    return out;
+  }
+
+  function updateRoomUI() {
+    var room = normalizeCode(getRoom());
+    if (room) {
+      roomBtn.classList.add("active");
+      roomTitle.textContent = "Room " + room;
+      roomSub.textContent = "Connected by code \u00b7 tap to change or leave";
+      roomCodeEl.value = room;
+      leaveRoomEl.style.display = "block";
+    } else {
+      roomBtn.classList.remove("active");
+      roomTitle.textContent = "Join a room";
+      roomSub.textContent = "Use a code across networks or when WiFi blocks direct transfer";
+      leaveRoomEl.style.display = "none";
+    }
+  }
+
+  function openRoomSheet() {
+    updateRoomUI();
+    roomCodeEl.value = normalizeCode(getRoom());
+    roomSheet.style.display = "block";
+    roomBackdrop.style.display = "block";
+    setTimeout(function () {
+      try { roomCodeEl.focus(); roomCodeEl.select(); } catch (e) {}
+    }, 50);
+  }
+
+  function closeRoomSheet() {
+    roomSheet.style.display = "none";
+    roomBackdrop.style.display = "none";
+  }
+
+  function joinRoom(value) {
+    var code = normalizeCode(value);
+    if (code.length < 4) {
+      note("Room codes need at least 4 letters or numbers.", true);
+      return;
+    }
+    closeRoomSheet();
+    location.search = "?r=" + code;
+  }
+
   function loadNet() {
-    var room = (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
+    updateRoomUI();
+    var room = getRoom();
     if (room) netLabelEl.textContent = "room " + room.toUpperCase() + " \u00b7 ";
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "/net" + (room ? "?r=" + room.toUpperCase() : ""), true);
     xhr.onload = function () {
       try {
         var d = JSON.parse(xhr.responseText);
-        if (d.room) netLabelEl.textContent = "room " + d.room + " \u00b7 ";
+        if (d.room) {
+          netLabelEl.textContent = "room " + d.room + " \u00b7 ";
+          updateRoomUI();
+        }
         else if (d.net) {
           netId = d.net;
           netLabelEl.textContent = "network " + d.net + " \u00b7 ";
@@ -289,6 +426,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
     var room = (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
     var proto = location.protocol === "https:" ? "wss://" : "ws://";
     ws = new WebSocket(proto + location.host + "/ws" + (room ? "?r=" + room.toUpperCase() : ""));
+    ws.binaryType = "arraybuffer";
     ws.onopen = function () {
       tries = 0;
       note("");
@@ -297,6 +435,10 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
       loadNet();
     };
     ws.onmessage = function (ev) {
+      if (typeof ev.data !== "string") {
+        handleRelayBinary(ev.data);
+        return;
+      }
       var m;
       try { m = JSON.parse(ev.data); } catch (e) { return; }
       handle(m);
@@ -329,6 +471,8 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
       renderPeers();
     } else if (m.t === "signal") {
       onSignal(m.from, m.data);
+    } else if (m.t === "relay") {
+      handleRelayControl(m);
     }
   }
 
@@ -510,6 +654,228 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
     }
   }
 
+  /* ---------- relay fallback ---------- */
+
+  function relayId() {
+    relaySeq++;
+    return "r" + Date.now().toString(36) + "-" + relaySeq;
+  }
+
+  function relaySend(obj) {
+    obj.t = "relay";
+    send(obj);
+  }
+
+  function peerName(id) {
+    return (peers[id] && peers[id].name) || "device";
+  }
+
+  function makeRelayBatch(count) {
+    var batch = { pending: count, ended: false, timer: null };
+    batch.finish = function () {
+      if (batch.ended) return;
+      batch.ended = true;
+      if (batch.timer) clearTimeout(batch.timer);
+      transferEnded();
+    };
+    if (count > 0) {
+      batch.timer = setTimeout(function () { batch.finish(); }, 180000);
+      transferStarted();
+    }
+    return batch;
+  }
+
+  function relayAck(id) {
+    var out = relayOut[id];
+    if (!out) return;
+    if (out.kind === "text") {
+      out.ui.fill.style.width = "100%";
+      out.ui.stat.textContent = out.chars + " characters \u00b7 delivered via relay";
+    } else {
+      showProgress(out.ui, out.size, out.size, out.t0, "delivered via relay");
+    }
+    delete relayOut[id];
+    if (out.batch) {
+      out.batch.pending--;
+      if (out.batch.pending <= 0) out.batch.finish();
+    }
+  }
+
+  function handleRelayControl(m) {
+    var from = String(m.from || "");
+    var kind = String(m.kind || "");
+    if (!from) return;
+
+    if (kind === "start") {
+      var size = Number(m.size) || 0;
+      var name = String(m.name || "file");
+      var file = {
+        id: String(m.id || ""),
+        name: name,
+        size: size,
+        type: String(m.type || "application/octet-stream"),
+        got: 0,
+        parts: [],
+        done: false,
+        t0: Date.now(),
+        last: 0,
+        ui: addCard("\u2193 " + name + "  \u2190  " + peerName(from) + " (relay)", fmtSize(size))
+      };
+      relayIn[from] = file;
+      if (!size) finishRelayFile(from);
+      return;
+    }
+
+    if (kind === "text") {
+      showText(from, String(m.text || ""), function () {
+        relaySend({ to: from, kind: "ack", id: m.id });
+      }, true);
+      return;
+    }
+
+    if (kind === "ack") {
+      relayAck(String(m.id || ""));
+    }
+  }
+
+  function handleRelayBinary(data) {
+    var bytes;
+    try { bytes = new Uint8Array(data); } catch (e) { return; }
+    if (bytes.length < 7) return;
+
+    var from = "";
+    for (var i = 0; i < 6; i++) from += String.fromCharCode(bytes[i]);
+    var file = relayIn[from];
+    if (!file || file.done) return;
+
+    var chunk = bytes.slice(6);
+    file.parts.push(new Blob([chunk]));
+    file.got += chunk.byteLength;
+    if (Date.now() - file.last > 120) {
+      file.last = Date.now();
+      showProgress(file.ui, file.got, file.size, file.t0);
+    }
+    if (file.got >= file.size) finishRelayFile(from);
+  }
+
+  function finishRelayFile(from) {
+    var file = relayIn[from];
+    if (!file || file.done) return;
+    file.done = true;
+    showProgress(file.ui, file.got, file.size, file.t0, "received via relay");
+
+    var url = URL.createObjectURL(new Blob(file.parts, { type: file.type }));
+    var a = document.createElement("a");
+    a.className = "save";
+    a.href = url;
+    a.download = file.name;
+    a.textContent = "Save " + file.name;
+    file.ui.card.appendChild(a);
+    file.parts = [];
+
+    relaySend({ to: from, kind: "ack", id: file.id });
+    delete relayIn[from];
+  }
+
+  function startRelayFiles(peerId, files) {
+    if (!ws || ws.readyState !== 1) {
+      note("Relay unavailable - connection is offline.", true);
+      return;
+    }
+
+    var batch = makeRelayBatch(files.length);
+    var index = 0;
+
+    function next() {
+      if (index >= files.length) return;
+      var f = files[index++];
+      if (f.size > RELAY_MAX_FILE) {
+        note(f.name + " is too large for relay (" + fmtSize(RELAY_MAX_FILE) + " max).", true);
+        batch.pending--;
+        if (batch.pending <= 0) batch.finish();
+        next();
+        return;
+      }
+
+      var id = relayId();
+      var t0 = Date.now();
+      var ui = addCard("\u2191 " + f.name + "  \u2192  " + peerName(peerId) + " (relay)", fmtSize(f.size));
+      ui.size = f.size;
+      ui.t0 = t0;
+      relayOut[id] = { ui: ui, size: f.size, t0: t0, batch: batch };
+      relaySend({ to: peerId, kind: "start", id: id, name: f.name, size: f.size, type: f.type || "" });
+
+      pushRelayFile(peerId, f, 0, ui, t0, function () {
+        showProgress(ui, f.size, f.size, t0, "sent via relay, waiting\u2026");
+        next();
+      });
+    }
+
+    next();
+  }
+
+  function pushRelayFile(peerId, file, offset, ui, t0, done) {
+    if (offset >= file.size) { done(); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      var view = new Uint8Array(fr.result);
+      var pos = 0;
+
+      function step() {
+        if (!ws || ws.readyState !== 1) {
+          note("Relay connection dropped.", true);
+          return;
+        }
+        if (ws.bufferedAmount > 1024 * 1024) {
+          setTimeout(step, 20);
+          return;
+        }
+
+        var end = Math.min(pos + RELAY_CHUNK, view.length);
+        var frame = new Uint8Array(6 + (end - pos));
+        for (var i = 0; i < 6; i++) frame[i] = peerId.charCodeAt(i) || 48;
+        frame.set(view.subarray(pos, end), 6);
+
+        try {
+          ws.send(frame.buffer);
+        } catch (e) {
+          note("Relay send failed.", true);
+          return;
+        }
+
+        var n = end - pos;
+        pos = end;
+        offset += n;
+        if (Date.now() - ui.last > 120) {
+          ui.last = Date.now();
+          showProgress(ui, offset, file.size, t0, "relay");
+        }
+        if (pos < view.length) setTimeout(step, 10);
+        else pushRelayFile(peerId, file, offset, ui, t0, done);
+      }
+
+      step();
+    };
+    fr.onerror = function () { note("Could not read " + file.name, true); };
+    fr.readAsArrayBuffer(file.slice(offset, Math.min(offset + SLICE, file.size)));
+  }
+
+  function startRelayText(peerId, text) {
+    if (!ws || ws.readyState !== 1) {
+      note("Relay unavailable - connection is offline.", true);
+      return;
+    }
+
+    var id = relayId();
+    var t0 = Date.now();
+    var batch = makeRelayBatch(1);
+    var ui = addCard("\u2191 Text  \u2192  " + peerName(peerId) + " (relay)", text.length + " characters");
+    ui.stat.textContent = text.length + " characters \u00b7 waiting\u2026";
+    relayOut[id] = { kind: "text", chars: text.length, ui: ui, t0: t0, batch: batch };
+    relaySend({ to: peerId, kind: "text", id: id, text: text });
+    ui.stat.textContent = text.length + " characters \u00b7 sent via relay, waiting\u2026";
+  }
+
   /* ---------- sending ---------- */
 
   fileEl.onchange = function () {
@@ -520,10 +886,12 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   /* Opens a data channel to one peer and hands it to the caller. Files and
      text both use this: what travels on the channel differs, the plumbing
      does not. */
-  function openChannel(peerId, peerName, onOpen, onMessage) {
+  function openChannel(peerId, peerName, onOpen, onMessage, onFail) {
     var pc = new RTC(ICE);
     var dc = pc.createDataChannel("f", { ordered: true });
     var closed = false;
+    var opened = false;
+    var failed = false;
 
     /* Register this connection before the offer goes out: the answer and ICE
        candidates from the other side must land on this same peer connection. */
@@ -533,22 +901,28 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
       if (e.candidate) send({ t: "signal", to: peerId, data: { c: e.candidate } });
     };
 
-    /* If no direct path can be opened (strict NAT on both sides), say so
-       instead of leaving the sender staring at a stuck transfer. */
-    var connectTimer = setTimeout(function () {
-      if (dc.readyState !== "open" && !closed) {
-        note("Couldn't open a direct path to " + peerName +
-          ". Some networks block device-to-device connections - try both devices on the same WiFi.", true);
+    function directFail() {
+      if (closed || failed) return;
+      if (opened) {
+        note("Direct connection to " + peerName + " dropped.", true);
+        return;
       }
-    }, 20000);
+      failed = true;
+      clearTimeout(connectTimer);
+      try { dc.close(); pc.close(); } catch (e) {}
+      if (conns[peerId] && conns[peerId].pc === pc) delete conns[peerId];
+      if (onFail) onFail();
+    }
+
+    var connectTimer = setTimeout(directFail, 12000);
     pc.onconnectionstatechange = function () {
       if (pc.connectionState === "failed") {
-        clearTimeout(connectTimer);
-        note("Couldn't open a direct path to " + peerName + ". The two networks are blocking peer-to-peer traffic.", true);
+        directFail();
       }
     };
 
     dc.onopen = function () {
+      opened = true;
       clearTimeout(connectTimer);
       onOpen(dc);
     };
@@ -576,6 +950,11 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   }
 
   function sendFiles(peerId, files) {
+    if (forceRelay) {
+      startRelayFiles(peerId, files);
+      return;
+    }
+
     var peerName = (peers[peerId] && peers[peerId].name) || "device";
     var index = 0, cards = [], okCount = 0, dc = null, chunk = CHUNK_SMALL, lowWater = false, high = HIGH;
     var lastMove = Date.now(), watchdog = null, ended = false;
@@ -624,6 +1003,9 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
           ch.close();
         }
       }
+    }, function () {
+      note("Direct path blocked - using relay (slower).", false);
+      startRelayFiles(peerId, files);
     });
 
     function nextFile() {
@@ -715,11 +1097,17 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   /* ---------- text ---------- */
 
   function sendText(peerId, text) {
+    if (forceRelay) {
+      startRelayText(peerId, text);
+      return;
+    }
+
     var peerName = (peers[peerId] && peers[peerId].name) || "device";
-    var ui = addCard("\u2191 Text  \u2192  " + peerName, text.length + " characters");
-    ui.stat.textContent = text.length + " characters \u00b7 waiting\u2026";
+    var ui = null;
 
     var ch = openChannel(peerId, peerName, function (dc) {
+      ui = addCard("\u2191 Text  \u2192  " + peerName, text.length + " characters");
+      ui.stat.textContent = text.length + " characters \u00b7 waiting\u2026";
       dc.send(JSON.stringify({ t: "t", text: text }));
       ui.fill.style.width = "100%";
       ui.stat.textContent = text.length + " characters \u00b7 sent, waiting for the other side\u2026";
@@ -728,9 +1116,12 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
       var m;
       try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.t === "ok") {
-        ui.stat.textContent = text.length + " characters \u00b7 delivered";
+        if (ui) ui.stat.textContent = text.length + " characters \u00b7 delivered";
         ch.close();
       }
+    }, function () {
+      note("Direct path blocked - using relay (slower).", false);
+      startRelayText(peerId, text);
     });
   }
 
@@ -758,7 +1149,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
     }
   }
 
-  function showText(from, text, dc, index) {
+  function showText(from, text, onDone, relayed) {
     if (waiting) {
       waiting = false;
       transfersEl.innerHTML = "";
@@ -770,7 +1161,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
     top.className = "cardtop";
     var nm = document.createElement("span");
     nm.className = "cname";
-    nm.textContent = "\u2193 Text  \u2190  " + who;
+    nm.textContent = "\u2193 Text  \u2190  " + who + (relayed ? " (relay)" : "");
     var sz = document.createElement("span");
     sz.className = "csize";
     sz.textContent = text.length + " characters";
@@ -788,7 +1179,7 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
     card.appendChild(body);
     card.appendChild(button);
     transfersEl.appendChild(card);
-    try { dc.send(JSON.stringify({ t: "ok", i: index })); } catch (e) {}
+    if (onDone) onDone();
   }
 
   /* ---------- receiving ---------- */
@@ -803,7 +1194,10 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
         var m;
         try { m = JSON.parse(ev.data); } catch (e) { return; }
         if (m.t === "t") {
-          showText(from, String(m.text || ""), dc, seq++);
+          var textIndex = seq++;
+          showText(from, String(m.text || ""), function () {
+            try { dc.send(JSON.stringify({ t: "ok", i: textIndex })); } catch (e) {}
+          }, false);
           return;
         }
         if (m.t !== "f") return;
@@ -872,14 +1266,22 @@ button.save { border: 0; font-family: inherit; cursor: pointer; }
   };
   nameEl.onblur = nameEl.onchange;
 
-  roomEl.onclick = function (e) {
-    e.preventDefault();
-    var current = (location.search.match(/[?&]r=([A-Za-z0-9]+)/) || [])[1] || "";
-    var code = prompt("Enter the same short code on both devices:", current);
-    if (code === null) return;
-    code = String(code).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-    location.search = code ? "?r=" + code : "";
+  roomBtn.onclick = openRoomSheet;
+  roomBackdrop.onclick = closeRoomSheet;
+  closeRoomEl.onclick = closeRoomSheet;
+  joinRoomEl.onclick = function () { joinRoom(roomCodeEl.value); };
+  createRoomEl.onclick = function () { location.search = "?r=" + makeRoomCode(); };
+  leaveRoomEl.onclick = function () { location.search = ""; };
+  roomCodeEl.onkeydown = function (e) {
+    if (e.keyCode === 13) {
+      e.preventDefault();
+      joinRoom(roomCodeEl.value);
+    }
   };
+  document.addEventListener("keydown", function (e) {
+    if (e.keyCode === 27 && roomSheet.style.display === "block") closeRoomSheet();
+  });
+  updateRoomUI();
 
   connect();
 })();

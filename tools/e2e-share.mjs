@@ -15,8 +15,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const TARGET = process.argv[2] || "http://127.0.0.1:8787/";
+const RELAY = process.env.SHARE_RELAY === "1";
 const WINDOW = process.argv[3] || "1000,800";
-const PORT = 9333;
+const PORT = Number(process.env.SHARE_TEST_PORT || 9300 + (process.pid % 500));
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const BIG_MB = Number(process.env.SHARE_BIG_MB || 6);
 const RECV_TIMEOUT = Number(process.env.SHARE_RECV_TIMEOUT_MS || 60000);
@@ -27,6 +28,12 @@ const FILES = [
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let earlyFailures = 0;
+
+function check(ok, label, detail) {
+  console.log((ok ? "PASS  " : "FAIL  ") + label + (detail ? "  (" + detail + ")" : ""));
+  if (!ok) earlyFailures++;
+}
 
 function bytesFor(size, seed) {
   const a = Buffer.alloc(size);
@@ -322,11 +329,12 @@ async function main() {
     ]);
     // A private room keeps the test isolated from real devices that may be
     // sitting in the default network room.
-    const room = "e2e" + Math.random().toString(36).slice(2, 8).toUpperCase();
-    const url = TARGET + (TARGET.indexOf("?") >= 0 ? "&" : "?") + "r=" + room;
+    const room = ("e2e" + Math.random().toString(36).slice(2, 8).toUpperCase()).slice(0, 8);
+    const url =
+      TARGET + (TARGET.indexOf("?") >= 0 ? "&" : "?") + "r=" + room + (RELAY ? "&relay=1" : "");
     await Promise.all([a.send("Page.navigate", { url: url }), b.send("Page.navigate", { url: url })]);
 
-    console.log("target:", url);
+    console.log("target:", url, RELAY ? "(forced relay)" : "(P2P)");
 
     // Each page must be past "Connecting..." - either it shows the waiting
     // hint (no peers yet) or it already lists the other tab.
@@ -334,6 +342,39 @@ async function main() {
     await waitFor(() => a.eval(ready), 20000, "tab A websocket connect");
     await waitFor(() => b.eval(ready), 20000, "tab B websocket connect");
     console.log("signaling: both tabs connected to /ws");
+
+    // The room control must be a real, large target near the top, not a footer link.
+    const roomInfo = JSON.parse(await a.eval(`
+      (function () {
+        var button = document.querySelector('[data-testid="room-button"]');
+        if (!button) return JSON.stringify({ found: false });
+        var rect = button.getBoundingClientRect();
+        return JSON.stringify({
+          found: true,
+          height: rect.height,
+          top: rect.top,
+          text: button.textContent
+        });
+      })()
+    `));
+    check(
+      roomInfo.found && roomInfo.height >= 54 && roomInfo.top < 500,
+      "room control is a large button near the top",
+      roomInfo.found ? roomInfo.height + "px at y=" + roomInfo.top : "missing",
+    );
+    check(roomInfo.found && roomInfo.text.indexOf("Room") >= 0, "room button shows the active room");
+    await a.eval(`document.querySelector('[data-testid="room-button"]').click()`);
+    await waitFor(
+      () => a.eval(`document.getElementById("roomsheet").style.display === "block"`),
+      5000,
+      "room sheet",
+    );
+    const prefill = await a.eval(`document.getElementById("roomcode").value`);
+    check(prefill === room.toUpperCase(), "room sheet prefills the active code", prefill);
+    const roomShot = await a.send("Page.captureScreenshot", { format: "png" });
+    writeFileSync("/tmp/share-room.png", Buffer.from(roomShot.data, "base64"));
+    await a.eval(`document.getElementById("closeroom").click()`);
+    await sleep(150);
 
     // Name each device.
     await a.eval(`(function(){var n=document.getElementById("name");n.value="Test A";n.dispatchEvent(new Event("change"));return n.value;})()`);
@@ -370,7 +411,7 @@ async function main() {
       throw new Error(e.message + " | sender: " + stateA + " | receiver: " + stateB);
     }
     const elapsedMs = Date.now() - startedAt;
-    let failures = 0;
+    let failures = earlyFailures;
 
     const received = JSON.parse(await b.eval(readSaves, true));
     const senderStats = await a.eval(`(function(){var s=document.querySelectorAll("#transfers .stat");var o=[];for(var i=0;i<s.length;i++)o.push(s[i].textContent);return JSON.stringify(o);})()`);

@@ -14,8 +14,9 @@
 // attachment, so no SQLite rows are ever written.
 
 const MAX_PEERS = 32;
-const MAX_SIGNAL_BYTES = 16 * 1024;
+const MAX_SIGNAL_BYTES = 64 * 1024;
 const MAX_MSGS_PER_SEC = 200;
+const MAX_RELAY_CHUNK = 64 * 1024;
 
 export default {
   async fetch(request, env) {
@@ -70,7 +71,7 @@ function isUpgrade(request) {
 }
 
 function newId() {
-  return Math.random().toString(36).slice(2, 8);
+  return Math.random().toString(36).slice(2, 8).padEnd(6, "0");
 }
 
 export class Room {
@@ -138,8 +139,6 @@ export class Room {
   }
 
   webSocketMessage(ws, message) {
-    if (typeof message !== "string" || message.length > MAX_SIGNAL_BYTES) return;
-
     const a = this.att(ws);
     if (!a.id) return;
 
@@ -155,6 +154,43 @@ export class Room {
       } catch (e) {}
       return;
     }
+
+    /*
+     * Relay fallback frame: [6-byte recipient id][binary payload].
+     * The relay is only used when a direct WebRTC path cannot be established,
+     * so both devices still only need outbound access to Cloudflare. The
+     * receiving peer gets [6-byte sender id][payload].
+     */
+    if (typeof message !== "string") {
+      let bytes;
+      try {
+        bytes = new Uint8Array(message);
+      } catch (e) {
+        return;
+      }
+      if (bytes.length < 7 || bytes.length > MAX_RELAY_CHUNK + 6) return;
+
+      let target = "";
+      for (let i = 0; i < 6; i++) target += String.fromCharCode(bytes[i]);
+      const payload = bytes.slice(6);
+      const sender = new TextEncoder().encode(a.id);
+      const out = new Uint8Array(sender.length + payload.length);
+      out.set(sender, 0);
+      out.set(payload, sender.length);
+
+      for (const other of this.state.getWebSockets()) {
+        const b = this.att(other);
+        if (b.id === target) {
+          try {
+            other.send(out.buffer);
+          } catch (e) {}
+          return;
+        }
+      }
+      return;
+    }
+
+    if (message.length > MAX_SIGNAL_BYTES) return;
 
     let m;
     try {
@@ -178,6 +214,32 @@ export class Room {
         if (b.id === m.to) {
           try {
             other.send(JSON.stringify({ t: "signal", from: a.id, data: m.data }));
+          } catch (e) {}
+          return;
+        }
+      }
+    }
+
+    if (m.t === "relay" && m.to) {
+      const kind = String(m.kind || "");
+      if (kind !== "start" && kind !== "text" && kind !== "ack" && kind !== "cancel") return;
+
+      const forwarded = JSON.stringify({
+        t: "relay",
+        from: a.id,
+        kind: kind,
+        id: String(m.id || "").slice(0, 32),
+        name: String(m.name || "").slice(0, 128),
+        size: Number(m.size) || 0,
+        type: String(m.type || "").slice(0, 64),
+        text: kind === "text" ? String(m.text || "").slice(0, 32000) : "",
+      });
+
+      for (const other of this.state.getWebSockets()) {
+        const b = this.att(other);
+        if (b.id === m.to) {
+          try {
+            other.send(forwarded);
           } catch (e) {}
           return;
         }

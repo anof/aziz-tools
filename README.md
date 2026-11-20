@@ -83,12 +83,13 @@ Later options:
 
 ## share.aziz.tools
 
-Browser-to-browser file transfer for devices on the same WiFi, in the spirit of
-AirDrop/Snapdrop. Two files, no packages, no build step:
+Browser-to-browser file transfer in the spirit of AirDrop/Snapdrop. Two files,
+no packages, no build step. Direct peer-to-peer by default, with an automatic
+relay fallback when the network blocks a direct path:
 
 | File | What it is |
 | --- | --- |
-| `share/src/index.js` | Worker + one Durable Object class. Signaling only: it relays WebRTC handshake messages and never sees file bytes. |
+| `share/src/index.js` | Worker + one Durable Object class. Relays WebRTC signaling, and (only when direct fails) binary chunks. |
 | `share/public/index.html` | The whole app: markup, CSS and ES5 JavaScript in one request. |
 
 How it works:
@@ -96,41 +97,53 @@ How it works:
 1. Each device opens a WebSocket to `/ws`. The Worker routes it to a Durable
    Object keyed by the caller's public IP, so devices on the same WiFi land in
    the same room with no codes, no QR and no accounts. `?r=CODE` joins an
-   explicit room instead (for VPN/Private Relay cases).
-2. The room relays SDP and ICE candidates between peers. That is a few KB per
-   transfer. Peer names live on the socket attachment, so no storage API is
+   explicit room instead (for VPN/Private Relay or different networks).
+2. The room relays SDP and ICE candidates between peers (a few KB per
+   transfer). Peer names live on the socket attachment, so no storage API is
    used and no rows are written.
-3. File bytes travel over a WebRTC data channel, device to device. Cloudflare
-   never carries them. The receiver confirms each file, and both sides show
-   progress, bytes and live speed.
+3. File bytes prefer a direct WebRTC data channel. If the direct connection
+   cannot open (for example a router with client isolation, which blocks
+   device-to-device traffic), the transfer automatically switches to a relay
+   through the Durable Object after roughly 12 seconds. Relay chunks are
+   32 KB binary WebSocket frames over TLS: they are forwarded and never stored,
+   but they do pass through Cloudflare's Worker. Direct transfers remain
+   WebRTC/DTLS and never carry file bytes through the Worker.
    Sending is chunked at 64 KB with flow control: the sender pauses once 4 MB
    is buffered, resumes on the data channel's low-water event with a timer as a
    safety net, and backs off if the channel reports a full buffer. Chunks are
    kept as Blob parts on the receiving side so large files can be paged out.
    Verified end to end with a 100 MB file (SHA-256 matched, local and live).
-   The sender's tab must stay open, and multi-gigabyte files depend on the
-   receiving device's memory.
+   Relay is capped at 200 MB per file and observed at around 2.6 MB/s. The
+   sender's tab must stay open, and multi-gigabyte files depend on the receiving
+   device's memory.
 4. Text uses the same channel: paste into "Send text", tap a device, and it
    appears on the other side with a Copy button (32,000 character limit, and
    the same delivery confirmation as files).
 
-Hotspots, VPNs and iCloud Private Relay can give two devices different public
-IPs, so IP-based discovery cannot match them. In that case both devices tap
-"Not seeing each other?" and enter the same short code, which puts them in an
-explicit room instead of a network room. The footer shows `network ab12cd` or
-`room CODE` so you can see which mode a device is in.
+The room control is a large card near the top of the page, not a footer link.
+Tap it to join with a code, create a new room, or leave the current one. Use a
+room when devices are on different networks (hotspot, VPN, iCloud Private
+Relay) or when a router isolates clients. The card shows `Room CODE` while
+connected; the footer still shows the network hash for diagnostics.
+
+Same-WiFi caveat: many routers (especially guest networks) allow both devices
+online but block packets between them. That is what makes devices visible but
+unreachable. The relay fallback fixes this because both devices only need
+outbound access to Cloudflare.
 
 Local development and testing:
 
 ```sh
 npx wrangler dev -c share/wrangler.toml --port 8787
 node tools/e2e-share.mjs http://127.0.0.1:8787/
+SHARE_RELAY=1 node tools/e2e-share.mjs http://127.0.0.1:8787/
 ```
 
 The end-to-end test opens two real browser peers, sends two files and a piece of
 text through the actual UI, verifies the received bytes by SHA-256, checks the
-text arrives unchanged (including unicode), and reports which ICE path the file
-took along with how many bytes the signaling server carried.
+text arrives unchanged (including unicode), checks the large room control, and
+reports which ICE path the file took. `SHARE_RELAY=1` forces the relay path so
+the same test exercises the server fallback.
 
 Deploy:
 
@@ -138,10 +151,12 @@ Deploy:
 npx wrangler deploy -c share/wrangler.toml
 ```
 
-Limits worth knowing: devices must share a public IP (so VPN, iCloud Private
-Relay or one device on cellular can hide a peer - use a room code then), WiFi
-networks with client isolation block peer-to-peer traffic, and received files
-are held in memory until saved, so very large files depend on available RAM.
+Limits worth knowing: automatic discovery still groups by public IP, so use a
+room when devices are on different networks. The relay needs internet access
+and consumes Durable Object requests/compute; on the Workers Free plan, relaying
+large files repeatedly can hit daily quotas. Direct transfers are faster and
+avoid the relay. Received files are held in memory until saved, so very large
+files depend on available RAM.
 
 ## shade.aziz.tools
 
