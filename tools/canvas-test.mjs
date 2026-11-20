@@ -190,6 +190,18 @@ async function main() {
       await sleep(250);
     }
 
+    async function pressKey(key) {
+      const code = key === "Enter" ? "Enter" : "Escape";
+      const vk = key === "Enter" ? 13 : 27;
+      await cdp.send("Input.dispatchKeyEvent", {
+        type: "keyDown", key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk,
+      });
+      await cdp.send("Input.dispatchKeyEvent", {
+        type: "keyUp", key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk,
+      });
+      await sleep(250);
+    }
+
     async function createDrawing() {
       await openMenu();
       const item = await rectOfText('[role="menuitem"]', "New Drawing");
@@ -359,6 +371,72 @@ async function main() {
     await sleep(250);
     const afterWheelPan = await transform();
     check(Math.abs(afterWheelPan.x - beforeWheelPan.x) > 5, "plain wheel pans the canvas");
+
+    // ---------- trackpad drawing mode ----------
+    const beforeTrackpad = await pathCount();
+    await clickAt(await rectOf('[data-testid="trackpad-mode"]'));
+    const armed = await cdp.eval(`document.querySelector('[data-testid="trackpad-mode"]').getAttribute('aria-label')`);
+    check(armed === "Disable trackpad drawing", "trackpad mode arms");
+    check((await cdp.eval(`document.body.textContent`)).includes("Click where you want to draw"), "trackpad mode asks where to place the pen");
+
+    await clickAt({ x: 500, y: 300 });
+    await sleep(350);
+    check(
+      (await cdp.eval(`document.querySelector('[data-testid="trackpad-mode"]').getAttribute('aria-label')`)) === "Disable trackpad drawing",
+      "trackpad mode stays on after placing",
+    );
+    check((await cdp.eval(`document.body.textContent`)).includes("move your finger to draw"), "trackpad mode shows drawing help");
+
+    for (const p of [{ x: 520, y: 310 }, { x: 545, y: 320 }, { x: 570, y: 300 }, { x: 600, y: 330 }]) {
+      await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: p.x, y: p.y, button: "none", buttons: 0 });
+      await sleep(25);
+    }
+    await sleep(250);
+    check(
+      (await pathCount()) === beforeTrackpad + 1,
+      "trackpad movement draws without holding a button",
+      beforeTrackpad + " -> " + (await pathCount()),
+    );
+
+    const placedAtPoint = await cdp.eval(`(function(){
+      var lines = document.querySelectorAll('main svg polyline');
+      if (!lines.length) return false;
+      var pts = (lines[lines.length - 1].getAttribute('points') || '').trim().split(/\\s+/);
+      if (!pts.length) return false;
+      var xy = pts[0].split(',').map(Number);
+      var g = (document.querySelector('main svg g') || {}).getAttribute ? document.querySelector('main svg g').getAttribute('transform') : '';
+      var m = /translate\\(\\s*([-\\d.e+]+)[,\\s]+([-\\d.e+]+)\\s*\\)\\s*scale\\(\\s*([-\\d.e+]+)\\s*\\)/i.exec(g || '');
+      if (!m) return false;
+      var sx = xy[0] * +m[3] + +m[1];
+      var sy = xy[1] * +m[3] + +m[2];
+      return Math.hypot(sx - 500, sy - 300) < 30;
+    })()`);
+    check(placedAtPoint, "trackpad stroke starts at the placed point");
+
+    await pressKey("Enter");
+    const afterLift = await pathCount();
+    for (const p of [{ x: 610, y: 340 }, { x: 640, y: 360 }, { x: 670, y: 350 }]) {
+      await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: p.x, y: p.y, button: "none", buttons: 0 });
+      await sleep(25);
+    }
+    await sleep(250);
+    check((await pathCount()) === afterLift + 1, "Enter lifts the pen and the next movement starts a new stroke");
+
+    await pressKey("Escape");
+    await sleep(350);
+    check(
+      (await cdp.eval(`document.querySelector('[data-testid="trackpad-mode"]').getAttribute('aria-label')`)) === "Enable trackpad drawing",
+      "Esc exits trackpad mode",
+    );
+    check(await cdp.eval(`document.pointerLockElement === null`), "Esc releases pointer lock");
+
+    const beforeNormalAfterTrackpad = await pathCount();
+    await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", x: 300, y: 220, button: "left", clickCount: 1 });
+    await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 350, y: 240, button: "left", buttons: 1 });
+    await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 400, y: 260, button: "left", buttons: 1 });
+    await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: 400, y: 260, button: "left", clickCount: 1 });
+    await sleep(250);
+    check((await pathCount()) === beforeNormalAfterTrackpad + 1, "mouse returns to normal drawing after Esc");
 
     console.log(failures ? "RESULT: FAIL (" + failures + ")" : "RESULT: PASS");
     process.exitCode = failures ? 1 : 0;

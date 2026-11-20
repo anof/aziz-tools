@@ -142,8 +142,9 @@ body {
 
 /* Square tile grid */
 .tools {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: clamp(0.85rem, 3vw, 1.35rem);
 }
 
@@ -152,6 +153,9 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  flex: 0 1 clamp(8.25rem, 26vw, 13.5rem);
+  width: clamp(8.25rem, 26vw, 13.5rem);
+  max-width: 100%;
   aspect-ratio: 1 / 1;
   padding: clamp(0.95rem, 3.5vw, 1.4rem);
   border: 1px solid var(--tile-border);
@@ -251,20 +255,6 @@ body {
   outline-offset: 3px;
 }
 
-/* Placeholder tiles */
-.tile--soon {
-  border-style: dashed;
-  background: transparent;
-  box-shadow: none;
-  opacity: 0.55;
-}
-
-.tile--soon .tile__badge {
-  background: transparent;
-  border-style: dashed;
-  color: var(--text-dim);
-}
-
 /* Footer */
 .footer {
   margin-top: auto;
@@ -272,18 +262,6 @@ body {
   color: var(--text-faint);
   font-size: 0.8rem;
   letter-spacing: 0.02em;
-}
-
-@media (min-width: 36rem) {
-  .tools {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 56rem) {
-  .tools {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

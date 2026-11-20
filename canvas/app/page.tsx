@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, type PointerEvent } from "react"
-import { Eraser, Menu, Plus, Trash2, Edit } from "lucide-react"
+import { Eraser, Menu, Plus, Trash2, Edit, Touchpad } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -88,6 +88,7 @@ export default function InfiniteCanvas() {
   const [canvasToDelete, setCanvasToDelete] = useState<SavedCanvas | null>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showHint, setShowHint] = useState(true)
+  const [trackpadMode, setTrackpadMode] = useState<"off" | "placing" | "active">("off")
 
   const actionRef = useRef<"drawing" | "erasing" | "panning" | "idle">("idle")
   const lineIdCounter = useRef(0)
@@ -100,6 +101,9 @@ export default function InfiniteCanvas() {
   const canvasRef = useRef<HTMLElement | null>(null)
   const panRef = useRef(pan)
   const scaleRef = useRef(scale)
+  const trackpadModeRef = useRef<"off" | "placing" | "active">("off")
+  const trackpadPenRef = useRef<Point | null>(null)
+  const trackpadLineIdRef = useRef<number | null>(null)
 
   // Load saved canvases from localStorage on mount
   useEffect(() => {
@@ -198,6 +202,33 @@ export default function InfiniteCanvas() {
     element.addEventListener("wheel", onWheel, { passive: false })
     return () => element.removeEventListener("wheel", onWheel)
   }, [])
+
+  useEffect(() => {
+    if (trackpadMode === "off") return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        exitTrackpadMode()
+      } else if (event.key === "Enter" && trackpadModeRef.current === "active") {
+        event.preventDefault()
+        endTrackpadStroke()
+      }
+    }
+
+    const onLockChange = () => {
+      if (trackpadModeRef.current === "active" && document.pointerLockElement !== canvasRef.current) {
+        exitTrackpadMode()
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    document.addEventListener("pointerlockchange", onLockChange)
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      document.removeEventListener("pointerlockchange", onLockChange)
+    }
+  }, [trackpadMode])
 
   const saveCurrentCanvas = (): SavedCanvas[] => {
     if (!currentCanvasId) return savedCanvases
@@ -355,7 +386,74 @@ export default function InfiniteCanvas() {
     actionRef.current = "idle"
   }
 
+  const endTrackpadStroke = () => {
+    trackpadLineIdRef.current = null
+    activeLineIdRef.current = null
+  }
+
+  const exitTrackpadMode = () => {
+    trackpadModeRef.current = "off"
+    setTrackpadMode("off")
+    endTrackpadStroke()
+    trackpadPenRef.current = null
+    actionRef.current = "idle"
+    gestureStartRef.current = null
+    activePointers.current.clear()
+    gestureLockedRef.current = false
+
+    if (typeof document !== "undefined" && document.pointerLockElement) {
+      try {
+        document.exitPointerLock()
+      } catch {}
+    }
+  }
+
+  const toggleTrackpadMode = () => {
+    if (trackpadModeRef.current !== "off") {
+      exitTrackpadMode()
+      return
+    }
+
+    setIsErasing(false)
+    setShowHint(false)
+    trackpadModeRef.current = "placing"
+    setTrackpadMode("placing")
+  }
+
   const handlePointerDown = (e: PointerEvent) => {
+    if (trackpadModeRef.current === "placing" && e.pointerType !== "touch") {
+      trackpadPenRef.current = getRelativePosition(e.clientX, e.clientY)
+      trackpadLineIdRef.current = null
+      activeLineIdRef.current = null
+      actionRef.current = "idle"
+      gestureStartRef.current = null
+      activePointers.current.clear()
+      trackpadModeRef.current = "active"
+      setTrackpadMode("active")
+
+      const element = canvasRef.current
+      const request =
+        (element as any)?.requestPointerLock?.bind(element) ||
+        (element as any)?.webkitRequestPointerLock?.bind(element)
+      if (request) {
+        try {
+          const result = request()
+          if (result && typeof result.catch === "function") result.catch(() => {})
+        } catch {}
+      }
+      return
+    }
+
+    if (trackpadModeRef.current === "active" && e.pointerType !== "touch") {
+      // A click is the equivalent of lifting the pen.
+      endTrackpadStroke()
+      return
+    }
+
+    if (e.pointerType === "touch" && trackpadModeRef.current !== "off") {
+      exitTrackpadMode()
+    }
+
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
     if (e.pointerType === "touch") {
@@ -425,6 +523,36 @@ export default function InfiniteCanvas() {
   }
 
   const handlePointerMove = (e: PointerEvent) => {
+    if (trackpadModeRef.current === "active" && e.pointerType === "mouse") {
+      const dx = e.movementX || 0
+      const dy = e.movementY || 0
+      if (!dx && !dy) return
+
+      const pen = trackpadPenRef.current
+      if (!pen) return
+
+      const factor = scaleRef.current || 1
+      const next = { x: pen.x + dx / factor, y: pen.y + dy / factor }
+      trackpadPenRef.current = next
+
+      const activeId = trackpadLineIdRef.current
+      if (activeId === null) {
+        const newId = lineIdCounter.current++
+        trackpadLineIdRef.current = newId
+        activeLineIdRef.current = newId
+        setLines((prevLines) => [...prevLines, { id: newId, points: [pen, next] }])
+      } else {
+        setLines((prevLines) =>
+          prevLines.map((line) =>
+            line.id === activeId ? { ...line, points: [...line.points, next] } : line,
+          ),
+        )
+      }
+      return
+    }
+
+    if (trackpadModeRef.current === "placing") return
+
     if (activePointers.current.has(e.pointerId)) {
       activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     }
@@ -470,6 +598,8 @@ export default function InfiniteCanvas() {
   }
 
   const handlePointerUp = (e: PointerEvent) => {
+    if (trackpadModeRef.current !== "off") return
+
     activePointers.current.delete(e.pointerId)
 
     if (actionRef.current === "panning") {
@@ -514,6 +644,25 @@ export default function InfiniteCanvas() {
         data-testid="eraser"
       >
         <Eraser className="h-6 w-6" />
+      </Button>
+
+      {/* Trackpad drawing mode */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn(
+          "absolute top-[calc(4.5rem+env(safe-area-inset-top))] left-4 z-10 h-12 w-12 rounded-lg transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
+          trackpadMode !== "off"
+            ? "border border-blue-400/40 bg-blue-500/25 text-blue-300 hover:bg-blue-500/35 active:bg-blue-500/45"
+            : "border border-white/10 bg-white/10 text-white hover:bg-white/15 active:bg-white/20",
+        )}
+        onClick={toggleTrackpadMode}
+        aria-label={trackpadMode === "off" ? "Enable trackpad drawing" : "Disable trackpad drawing"}
+        aria-pressed={trackpadMode !== "off"}
+        data-testid="trackpad-mode"
+      >
+        <Touchpad className="h-6 w-6" />
       </Button>
 
       {/* Current drawing name */}
@@ -659,7 +808,7 @@ export default function InfiniteCanvas() {
         ref={canvasRef}
         className={cn(
           "w-full h-full touch-none overscroll-none",
-          isErasing ? "cursor-cell" : "cursor-crosshair",
+          trackpadMode === "active" ? "cursor-none" : isErasing ? "cursor-cell" : "cursor-crosshair",
         )}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -693,11 +842,17 @@ export default function InfiniteCanvas() {
         </svg>
       </main>
 
-      {showHint && (
+      {trackpadMode !== "off" ? (
+        <div className="pointer-events-none absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-10 max-w-[92vw] -translate-x-1/2 rounded-full border border-blue-400/30 bg-blue-950/70 px-3 py-2 text-center text-[11px] leading-relaxed text-blue-100/80">
+          {trackpadMode === "placing"
+            ? "Click where you want to draw · then move a finger on the trackpad · Esc cancels"
+            : "Trackpad mode · move your finger to draw · Enter or click lifts the pen · Esc exits"}
+        </div>
+      ) : showHint ? (
         <div className="pointer-events-none absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-10 max-w-[92vw] -translate-x-1/2 rounded-full border border-white/10 bg-black/60 px-3 py-2 text-center text-[11px] leading-relaxed text-white/60">
           One finger draws · Two fingers move &amp; zoom · Pinch or Ctrl/⌘ + scroll to zoom
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

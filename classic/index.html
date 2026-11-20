@@ -90,14 +90,16 @@ h1 .tld { color: #5fd0e8; }
   margin: 0;
   padding: 0;
   font-size: 0;
+  text-align: center;
 }
 
 .cell {
   display: inline-block;
-  width: 46.5%;
-  padding: 1.5%;
+  width: 130px;
+  padding: 5px;
   font-size: 15px;
   vertical-align: top;
+  text-align: left;
 }
 
 /* padding-bottom:100% makes a square from the cell width, on any browser. */
@@ -207,13 +209,13 @@ h1 .tld { color: #5fd0e8; }
 /* Wider screens get more columns. A browser too old for media queries simply
    keeps the two-column layout, which still works everywhere. */
 @media screen and (min-width: 480px) {
-  .cell { width: 29.5%; }
+  .cell { width: 160px; padding: 8px; }
 }
 
 @media screen and (min-width: 760px) {
   .page { padding: 40px 20px 64px 20px; }
   .footer { left: 20px; right: 20px; }
-  .cell { width: 21.5%; }
+  .cell { width: 180px; padding: 10px; }
   h1 { font-size: 34px; }
   .tagline { margin-bottom: 24px; }
   .badge { width: 46px; height: 46px; line-height: 46px; font-size: 25px; }
@@ -227,7 +229,7 @@ h1 .tld { color: #5fd0e8; }
   <h1><span class="dot"></span>aziz<span class="tld">.tools</span></h1>
   <p class="tagline">Small tools. One place. Tap one to open it.</p>
 
-  <div class="grid"><div class="cell"><div class="frame"><a class="tile" href="https://share.aziz.tools"><span class="badge">&#187;</span><span class="label"><span class="name">Share</span><span class="host">share.aziz.tools</span></span></a></div></div><div class="cell"><div class="frame"><a class="tile" href="https://shade.aziz.tools"><span class="badge">&#9788;</span><span class="label"><span class="name">Shade</span><span class="host">shade.aziz.tools</span></span></a></div></div><div class="cell"><div class="frame"><a class="tile" href="https://canvas.aziz.tools"><span class="badge">&#8734;</span><span class="label"><span class="name">Canvas</span><span class="host">canvas.aziz.tools</span></span></a></div></div><div class="cell"><div class="frame frame-soon"><span class="badge">+</span><span class="label"><span class="name">Next tool</span><span class="host">Coming soon</span></span></div></div></div>
+  <div class="grid"><div class="cell"><div class="frame"><a class="tile" href="https://share.aziz.tools"><span class="badge">&#187;</span><span class="label"><span class="name">Share</span><span class="host">share.aziz.tools</span></span></a></div></div><div class="cell"><div class="frame"><a class="tile" href="https://shade.aziz.tools"><span class="badge">&#9788;</span><span class="label"><span class="name">Shade</span><span class="host">shade.aziz.tools</span></span></a></div></div><div class="cell"><div class="frame"><a class="tile" href="https://canvas.aziz.tools"><span class="badge">&#8734;</span><span class="label"><span class="name">Canvas</span><span class="host">canvas.aziz.tools</span></span></a></div></div></div>
 
   <p class="footer">&copy; 2026 aziz.tools</p>
 

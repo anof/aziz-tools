@@ -97,3 +97,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media (hover: none) and (pointer: coarse) {
+  [data-testid="trackpad-mode"] {
+    display: none;
+  }
+}
