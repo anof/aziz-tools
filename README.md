@@ -180,39 +180,47 @@ the page to confirm it comes back.
 
 ## canvas.aziz.tools
 
-Infinite finger canvas, rebuilt from the supplied Expo project as one static
-page - no React Native, no Expo, no server.
+Infinite canvas built from `infinite-canvas-project.zip` (Next.js 15), exported
+as static files and served by a Cloudflare Worker. No server or database.
 
-| File | What it is |
+| Path | What it is |
 | --- | --- |
-| `canvas/public/index.html` | The whole app: SVG canvas, touch handling, toolbar |
-| `canvas/wrangler.toml` | Worker + `canvas.aziz.tools` custom domain |
+| `canvas/app/page.tsx` | Canvas, sessions, touch/mouse/pen handling |
+| `canvas/app/layout.tsx` | Metadata, icons, viewport |
+| `canvas/public/` | Icons and static assets |
+| `canvas/out/` | Generated static export (gitignored) |
+| `canvas/wrangler.toml` | Worker + `canvas.aziz.tools`, assets from `./out` |
 
-Kept from the source: black canvas, `#00A8FF` strokes, 4px constant stroke
-width, 25px eraser, 0.1x-10x zoom, the eraser/clear toolbar, and unbounded
-(infinite) panning in every direction.
+Features kept from the project:
 
-What changed for fingers: the source's `PanResponder` only captured pinch state
-on the first press, so a second finger arriving mid-stroke never engaged pinch
-and could leave a partial stroke behind. This version tracks touches explicitly:
+- **Sessions** in localStorage: create, rename, delete, switch, autosave,
+  in-browser persistence. The active session id is stored separately
+  (`infinite-canvas-active`) so a reload opens the right canvas, and switching
+  flushes the current drawing first so nothing in the last 500ms is lost.
+- **Infinite canvas**: unbounded panning and multiplicative zoom with a
+  practical 1e-6x-1e6x range; the zoom level is shown in the session chip.
+- **Eraser** deletes the connected lines under a 20px screen-space radius.
+- **Touch**: one finger draws or erases; two fingers move and pinch; a second
+  finger arriving mid-stroke discards the accidental stroke and takes over;
+  a leftover finger cannot draw after a pinch until all fingers lift.
+- **Mouse**: drag draws, plain wheel pans, Ctrl/Command + wheel zooms at the
+  pointer. A native non-passive wheel listener prevents the browser itself
+  from zooming.
+- Page scrolling and browser pinch-zoom are disabled over the canvas.
 
-- One finger draws (a tap leaves a dot).
-- Two fingers pan and pinch together, even when the second finger lands after
-  drawing has started; the partial stroke is discarded when that happens.
-- After a pinch, a leftover finger can't draw until every finger lifts.
-- `touch-action: none` plus prevented touch defaults stop Safari/Chrome from
-  scrolling or page-zooming under the canvas.
-- Mouse works on desktop: drag draws, wheel pans, ctrl/cmd+wheel zooms at the
-  pointer.
-
-Test and deploy:
+Build and deploy:
 
 ```sh
+cd ~/aziz.tools/canvas
+npm install --legacy-peer-deps
+npm run build
+cd ..
 npx wrangler dev -c canvas/wrangler.toml --port 8790
 node tools/canvas-test.mjs http://127.0.0.1:8790/
 npx wrangler deploy -c canvas/wrangler.toml
 ```
 
-The test emulates a phone with CDP touch events: one-finger strokes, pinch,
-pan, a second finger mid-stroke, eraser, clear, and confirms the page never
-scrolls.
+The test emulates a phone with CDP touch events and a desktop with mouse events:
+one-finger strokes, pinch past 10x and below 0.1x, pan, a second finger
+mid-stroke, touch eraser, session rename/new/switch/reload/delete, mouse draw,
+Ctrl-wheel zoom and wheel pan.

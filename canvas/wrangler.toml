@@ -10,4 +10,4 @@ routes = [
 ]
 
 [assets]
-directory = "./public"
+directory = "./out"
